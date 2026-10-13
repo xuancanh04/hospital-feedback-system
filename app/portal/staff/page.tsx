@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { useFeedback } from '@/context/feedback-context';
 import { ReviewCard } from '@/components/review-card';
@@ -60,9 +61,12 @@ export default function StaffPortalPage() {
       {/* Header Profile Banner */}
       <div className="bg-gradient-to-r from-teal-900 to-emerald-900 rounded-3xl p-8 text-white shadow-md mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <img
+          <Image
             src={currentUser?.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80'}
             alt={currentUser?.name || 'Bác sĩ'}
+            width={64}
+            height={64}
+            unoptimized
             className="w-16 h-16 rounded-2xl object-cover ring-2 ring-teal-400"
           />
           <div>

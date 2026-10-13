@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { Input } from '@/components/ui/form-controls';
 import { CheckCircle2 } from 'lucide-react';
@@ -25,9 +26,12 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8 shadow-sm space-y-8">
         <div className="flex items-center gap-4 border-b pb-6">
-          <img
+          <Image
             src={currentUser?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80'}
             alt={currentUser?.name || 'Tài khoản'}
+            width={64}
+            height={64}
+            unoptimized
             className="w-16 h-16 rounded-full object-cover ring-2 ring-emerald-600"
           />
           <div>

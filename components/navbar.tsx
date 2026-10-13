@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { 
@@ -52,10 +53,13 @@ export function Navbar() {
         <div className="flex items-center justify-between h-17">
           {/* Logo & Tên Bệnh Viện Quân Y */}
           <Link href="/" className="flex items-center gap-3.5 group">
-            <img
+            <Image
               src="/logo.png"
               alt="Logo Bệnh viện Quân y 7A"
+              width={48}
+              height={48}
               className="h-11 sm:h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-200"
+              priority
             />
             <div>
               <div className="flex items-center gap-2">
@@ -158,10 +162,13 @@ export function Navbar() {
                   href="/profile"
                   className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-slate-200 hover:border-emerald-600/40 hover:bg-emerald-50/40 transition"
                 >
-                  <img
+                  <Image
                     src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
                     alt={currentUser.name}
+                    width={28}
+                    height={28}
                     className="w-7 h-7 rounded-full object-cover ring-2 ring-emerald-700/40"
+                    unoptimized
                   />
                   <div className="hidden sm:block text-left">
                     <p className="text-xs font-semibold leading-none text-slate-800">
@@ -272,9 +279,11 @@ export function Footer() {
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center border border-white/20 shadow-sm overflow-hidden shrink-0">
-                <img
+                <Image
                   src="/logo.png"
                   alt="Logo Bệnh viện Quân y 7A"
+                  width={44}
+                  height={44}
                   className="w-full h-full object-contain"
                 />
               </div>

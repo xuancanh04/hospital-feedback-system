@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Review } from '@/types';
 import { StarRating } from '@/components/star-rating';
 import { 
@@ -39,7 +40,7 @@ export function ReviewCard({ review, onReplyClick, showAdminActions = false }: R
             {review.isAnonymous ? (
               <span className="text-emerald-200 text-xs">ẨN</span>
             ) : review.userAvatar ? (
-              <img src={review.userAvatar} alt={review.userName} className="w-full h-full object-cover" />
+              <Image src={review.userAvatar} alt={review.userName} width={44} height={44} unoptimized className="w-full h-full object-cover" />
             ) : (
               review.userName.charAt(0).toUpperCase()
             )}
@@ -131,10 +132,13 @@ export function ReviewCard({ review, onReplyClick, showAdminActions = false }: R
       {review.images && review.images.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
           {review.images.map((img, idx) => (
-            <img
+            <Image
               key={idx}
               src={img}
               alt="Hình ảnh đính kèm"
+              width={96}
+              height={96}
+              unoptimized
               className="w-24 h-24 object-cover rounded-xl border border-slate-200 cursor-pointer hover:opacity-90 transition"
             />
           ))}
