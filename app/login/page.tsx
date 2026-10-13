@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
@@ -91,10 +92,13 @@ function LoginFormContent() {
           {/* Header */}
           <div className="text-center space-y-2">
             <Link href="/" className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white p-1.5 shadow-md border border-emerald-900/10 mb-2 hover:scale-105 transition-transform overflow-hidden mx-auto">
-              <img
+              <Image
                 src="/logo.png"
                 alt="Logo Bệnh viện Quân y 7A"
+                width={56}
+                height={56}
                 className="w-full h-full object-contain"
+                priority
               />
             </Link>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">

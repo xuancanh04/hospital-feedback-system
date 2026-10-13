@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { useFeedback } from '@/context/feedback-context';
@@ -344,9 +345,12 @@ export default function FeedbackPage() {
               <div className="flex gap-3 mt-3 overflow-x-auto pb-2">
                 {images.map((img, idx) => (
                   <div key={idx} className="relative group shrink-0">
-                    <img
+                    <Image
                       src={img}
                       alt="Ảnh đính kèm"
+                      width={80}
+                      height={80}
+                      unoptimized
                       className="w-20 h-20 object-cover rounded-xl border border-zinc-200"
                     />
                     <button

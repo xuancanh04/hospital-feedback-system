@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { useFeedback } from '@/context/feedback-context';
 import { ReviewCard } from '@/components/review-card';
@@ -569,9 +570,12 @@ export default function AdminPortalPage() {
                     <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-850">
                       <td className="py-3.5">
                         <div className="flex items-center gap-3">
-                          <img
+                          <Image
                             src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
                             alt={u.name}
+                            width={36}
+                            height={36}
+                            unoptimized
                             className="w-9 h-9 rounded-full object-cover ring-1 ring-zinc-200"
                           />
                           <div>
