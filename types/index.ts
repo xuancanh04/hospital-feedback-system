@@ -23,6 +23,8 @@ export interface Department {
   doctorCount: number;
   averageRating: number;
   totalReviews: number;
+  note?: string;
+  category?: 'noi' | 'ngoai' | 'canlamsang';
 }
 
 export interface Doctor {
@@ -86,4 +88,15 @@ export interface SystemStats {
   csatScore: number; // e.g., 94.6%
   totalDepartments: number;
   totalDoctors: number;
+}
+
+export interface PatientCardInfo {
+  type: 'cccd' | 'bhyt';
+  fullName: string;
+  cardNumber: string;
+  dob?: string;
+  gender?: 'Nam' | 'Nữ' | string;
+  address?: string;
+  hospitalInitial?: string;
+  scannedAt: string;
 }

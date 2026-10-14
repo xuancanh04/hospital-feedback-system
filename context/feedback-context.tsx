@@ -24,32 +24,27 @@ interface FeedbackContextType {
 const FeedbackContext = createContext<FeedbackContextType | undefined>(undefined);
 
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
-  const [departments, setDepartments] = useState<Department[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_DEPARTMENTS;
-    try {
-      const saved = localStorage.getItem('hospital_7a_departments');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_DEPARTMENTS;
-  });
+  const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
+  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
+  const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
 
-  const [doctors, setDoctors] = useState<Doctor[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_DOCTORS;
+  // Chỉ đọc từ localStorage sau khi đã mount trên Client để tránh lệch Hydration SSR
+  React.useEffect(() => {
     try {
-      const saved = localStorage.getItem('hospital_7a_doctors');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_DOCTORS;
-  });
+      const savedDepts = localStorage.getItem('hospital_7a_departments_v4');
+      if (savedDepts) {
+        const parsed = JSON.parse(savedDepts);
+        if (Array.isArray(parsed) && parsed.length >= INITIAL_DEPARTMENTS.length) {
+          setDepartments(parsed);
+        }
+      }
+      const savedDocs = localStorage.getItem('hospital_7a_doctors');
+      if (savedDocs) setDoctors(JSON.parse(savedDocs));
 
-  const [reviews, setReviews] = useState<Review[]>(() => {
-    if (typeof window === 'undefined') return INITIAL_REVIEWS;
-    try {
-      const saved = localStorage.getItem('hospital_7a_reviews');
-      if (saved) return JSON.parse(saved);
+      const savedRevs = localStorage.getItem('hospital_7a_reviews');
+      if (savedRevs) setReviews(JSON.parse(savedRevs));
     } catch {}
-    return INITIAL_REVIEWS;
-  });
+  }, []);
 
   const saveReviewsLocal = (newList: Review[]) => {
     setReviews(newList);
@@ -58,7 +53,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
 
   const saveDepartmentsLocal = (newList: Department[]) => {
     setDepartments(newList);
-    localStorage.setItem('hospital_7a_departments', JSON.stringify(newList));
+    localStorage.setItem('hospital_7a_departments_v4', JSON.stringify(newList));
   };
 
   const saveDoctorsLocal = (newList: Doctor[]) => {

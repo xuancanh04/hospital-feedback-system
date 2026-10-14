@@ -165,3 +165,11 @@
   transform: translateY(-4px);
   box-shadow: 0 12px 24px -8px rgba(18, 46, 34, 0.08);
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
