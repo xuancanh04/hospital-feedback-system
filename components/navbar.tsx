@@ -6,155 +6,63 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { 
-  MessageSquarePlus, 
-  LayoutDashboard, 
-  Stethoscope, 
-  Star, 
   LogOut, 
   LogIn, 
   ShieldCheck, 
-  FileText, 
-  Menu, 
-  X,
   PhoneCall
 } from 'lucide-react';
 
 export function Navbar() {
   const pathname = usePathname();
   const { currentUser, isAuthenticated, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-colors">
       {/* Top Banner Quân Đội - Xanh Đậm Chuẩn Quân Y (#02633c) */}
-      <div className="bg-[#02633c] text-white text-xs py-2 px-4 sm:px-8 flex justify-between items-center font-normal tracking-wide">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-2 font-bold text-white">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            BỘ QUỐC PHÒNG • BỆNH VIỆN QUÂN Y 7A
+      <div className="bg-[#02633c] text-white text-[11px] sm:text-xs py-1.5 sm:py-2 px-3 sm:px-8 flex justify-between items-center font-normal tracking-wide">
+        <div className="flex items-center gap-2 sm:gap-3 truncate mr-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+          <span className="font-bold text-white uppercase truncate whitespace-nowrap">
+            BỆNH VIỆN QUÂN Y 7A
           </span>
-          <span className="hidden sm:inline text-emerald-200/50">|</span>
-          <span className="hidden md:inline text-emerald-100 font-light">
-            Cổng Lắng Nghe & Đánh Giá Chất Lượng Khám Chữa Bệnh
+          <span className="hidden md:inline text-emerald-200/50">|</span>
+          <span className="hidden md:inline text-emerald-100 font-light truncate">
+            Cổng Lắng Nghe & Đánh Giá Chất Lượng
           </span>
         </div>
-        <div className="flex items-center gap-4 text-[11px] text-emerald-100">
-          <span className="flex items-center gap-1.5">
-            <PhoneCall className="w-3.5 h-3.5 text-emerald-300" />
-            Cấp cứu 24/7: <strong className="text-white font-bold tracking-wider">(028) 3855 5727</strong>
+        <div className="flex items-center gap-3 text-[11px] text-emerald-100 shrink-0">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
+            <PhoneCall className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300" />
+            <span className="hidden xs:inline">Cấp cứu:</span> <strong className="text-white font-bold tracking-wider">(028) 3855 5727</strong>
           </span>
-          <span className="hidden lg:inline text-emerald-200/50">•</span>
-          <span className="hidden lg:inline text-white">466 Nguyễn Trãi, P.8, Q.5, TP.HCM</span>
         </div>
       </div>
 
       {/* Main Navbar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-17">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-17 gap-2">
           {/* Logo & Tên Bệnh Viện Quân Y */}
-          <Link href="/" className="flex items-center gap-3.5 group">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3.5 group min-w-0 shrink">
             <Image
               src="/logo.png"
               alt="Logo Bệnh viện Quân y 7A"
-              width={48}
-              height={48}
-              className="h-11 sm:h-12 w-auto object-contain group-hover:scale-105 transition-transform duration-200"
+              width={430}
+              height={148}
+              unoptimized
+              className="h-9 sm:h-11 md:h-12 w-auto object-contain shrink-0 group-hover:scale-105 transition-transform duration-200"
               priority
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-[17px] tracking-tight text-[#02633c] group-hover:text-[#01472a] transition-colors">
-                  BỆNH VIỆN QUÂN Y 7A
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">Hệ thống Tiếp nhận Ý kiến & Khảo sát Hài lòng</p>
+            <div className="min-w-0">
+              <span className="font-extrabold text-sm sm:text-base md:text-[17px] tracking-tight text-[#02633c] group-hover:text-[#01472a] transition-colors whitespace-nowrap block truncate">
+                BỆNH VIỆN QUÂN Y 7A
+              </span>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium hidden sm:block truncate">
+                Hệ thống Tiếp nhận Ý kiến & Khảo sát Hài lòng
+              </p>
             </div>
           </Link>
 
-          {/* Menu Điều Hướng Desktop */}
-          <nav className="hidden lg:flex items-center gap-1.5 text-sm font-medium">
-            <Link
-              href="/"
-              className={`px-3.5 py-2 rounded-xl transition-all ${
-                pathname === '/'
-                  ? 'text-[#02633c] bg-emerald-50/80 font-bold border border-[#02633c]/30'
-                  : 'text-slate-600 hover:text-[#02633c] hover:bg-slate-100/70'
-              }`}
-            >
-              Trang Chủ
-            </Link>
-
-            <Link
-              href="/reviews"
-              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
-                pathname === '/reviews'
-                  ? 'text-[#02633c] bg-emerald-50/80 font-bold border border-[#02633c]/30'
-                  : 'text-slate-600 hover:text-[#02633c] hover:bg-slate-100/70'
-              }`}
-            >
-              <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
-              Đánh Giá Công Khai
-            </Link>
-
-            <Link
-              href="/feedback"
-              className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
-                pathname === '/feedback'
-                  ? 'text-[#02633c] bg-emerald-50/80 font-bold border border-[#02633c]/30'
-                  : 'text-slate-600 hover:text-[#02633c] hover:bg-slate-100/70'
-              }`}
-            >
-              <MessageSquarePlus className="w-4 h-4 text-[#02633c]" />
-              Gửi Đánh Giá
-            </Link>
-
-
-
-            {/* Mục Role Riêng Biệt */}
-            {currentUser?.role === 'patient' && (
-              <Link
-                href="/portal/patient"
-                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 font-semibold ${
-                  pathname.startsWith('/portal/patient')
-                    ? 'text-[#1b4332] bg-emerald-50/80 font-bold border border-emerald-200/60'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-                }`}
-              >
-                <FileText className="w-4 h-4 text-[#2d6a4f]" />
-                Lịch Sử Của Tôi
-              </Link>
-            )}
-
-            {currentUser?.role === 'staff' && (
-              <Link
-                href="/portal/staff"
-                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 font-bold ${
-                  pathname.startsWith('/portal/staff')
-                    ? 'text-teal-900 bg-teal-50 font-bold border border-teal-200'
-                    : 'text-teal-800 hover:bg-teal-50/60'
-                }`}
-              >
-                <Stethoscope className="w-4 h-4 text-teal-700" />
-                Hộp Thư Bác Sĩ / Khoa
-              </Link>
-            )}
-
-            {currentUser?.role === 'admin' && (
-              <Link
-                href="/portal/admin"
-                className={`px-3.5 py-2 rounded-xl transition-all flex items-center gap-1.5 font-bold ${
-                  pathname.startsWith('/portal/admin')
-                    ? 'text-purple-900 bg-purple-50 font-bold border border-purple-200'
-                    : 'text-purple-800 hover:bg-purple-50/60'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4 text-purple-700" />
-                Dashboard Ban Giám Đốc
-              </Link>
-            )}
-          </nav>
-
-          {/* Cụm Đăng Nhập / Đăng Ký / Profile */}
+          {/* Cụm Đăng Nhập / Profile */}
           <div className="flex items-center gap-3">
             {isAuthenticated && currentUser ? (
               <div className="flex items-center gap-2">
@@ -175,7 +83,7 @@ export function Navbar() {
                       {currentUser.name.length > 15 ? currentUser.name.slice(0, 13) + '...' : currentUser.name}
                     </p>
                     <p className="text-[10px] text-emerald-700 font-medium capitalize mt-0.5">
-                      {currentUser.role === 'admin' ? 'Ban Giám Đốc' : currentUser.role === 'staff' ? 'Bác sĩ / Khoa' : 'Bệnh nhân'}
+                      Quản Trị Viên
                     </p>
                   </div>
                 </Link>
@@ -189,84 +97,21 @@ export function Navbar() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/login"
-                  className="px-4 py-2 rounded-xl bg-[#02633c] hover:bg-[#01472a] text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5"
-                >
-                  <LogIn className="w-4 h-4 text-emerald-300" />
-                  Đăng Nhập Quản Trị
-                </Link>
-              </div>
+              pathname !== '/login' ? (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/login"
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#02633c] hover:bg-[#01472a] text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0 whitespace-nowrap"
+                  >
+                    <LogIn className="w-4 h-4 text-emerald-300" />
+                    <span>Đăng Nhập</span>
+                  </Link>
+                </div>
+              ) : null
             )}
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
           </div>
         </div>
       </div>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white p-4 space-y-2">
-          <Link
-            href="/"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100"
-          >
-            Trang Chủ
-          </Link>
-          <Link
-            href="/reviews"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100"
-          >
-            Đánh Giá Công Khai
-          </Link>
-          <Link
-            href="/feedback"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100"
-          >
-            Gửi Đánh Giá
-          </Link>
-
-          {currentUser?.role === 'admin' && (
-            <Link
-              href="/portal/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm font-bold text-purple-800 hover:bg-purple-50"
-            >
-              Dashboard Ban Giám Đốc
-            </Link>
-          )}
-
-          {currentUser?.role === 'staff' && (
-            <Link
-              href="/portal/staff"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm font-bold text-teal-800 hover:bg-teal-50"
-            >
-              Hộp Thư Bác Sĩ / Khoa
-            </Link>
-          )}
-
-          {currentUser?.role === 'patient' && (
-            <Link
-              href="/portal/patient"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm font-semibold text-[#1b4332] hover:bg-emerald-50"
-            >
-              Lịch Sử Đánh Giá Của Tôi
-            </Link>
-          )}
-        </div>
-      )}
     </header>
   );
 }
@@ -278,13 +123,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center border border-white/20 shadow-sm overflow-hidden shrink-0">
+              <div className="h-10 w-auto px-2 py-1 rounded-lg bg-white flex items-center justify-center border border-white/20 shadow-sm shrink-0">
                 <Image
                   src="/logo.png"
                   alt="Logo Bệnh viện Quân y 7A"
-                  width={44}
-                  height={44}
-                  className="w-full h-full object-contain"
+                  width={430}
+                  height={148}
+                  unoptimized
+                  className="h-full w-auto object-contain"
                 />
               </div>
               <span className="font-extrabold text-base text-white tracking-wide">
@@ -306,8 +152,7 @@ export function Footer() {
             <ul className="space-y-2 text-xs text-white/90">
               <li><Link href="/feedback" className="hover:text-white hover:underline transition">Khảo sát ý kiến bệnh nhân</Link></li>
               <li><Link href="/reviews" className="hover:text-white hover:underline transition">Xem nhận xét công khai</Link></li>
-              <li><Link href="/portal/staff" className="hover:text-white hover:underline transition">Cổng Bác sĩ & Khoa phòng</Link></li>
-              <li><Link href="/portal/admin" className="hover:text-white hover:underline transition">Dashboard Ban Giám Đốc</Link></li>
+              <li><Link href="/portal/admin" className="hover:text-white hover:underline transition">Dashboard Quản Trị</Link></li>
             </ul>
           </div>
 
