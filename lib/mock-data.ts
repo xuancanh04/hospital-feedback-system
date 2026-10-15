@@ -299,7 +299,7 @@ export const MOCK_USERS: User[] = [
     email: 'admin@benhvien7a.vn',
     password: 'admin',
     role: 'admin',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    avatar: '/admin-avatar-3d.jpg',
     title: 'Quản Trị Viên Hệ Thống',
     phone: '028 3855 5727',
     status: 'active',

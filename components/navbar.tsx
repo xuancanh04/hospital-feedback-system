@@ -15,7 +15,11 @@ import {
 export function Navbar() {
   const pathname = usePathname();
   const { currentUser, isAuthenticated, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-colors">
       {/* Top Banner Quân Đội - Xanh Đậm Chuẩn Quân Y (#02633c) */}
@@ -64,14 +68,14 @@ export function Navbar() {
 
           {/* Cụm Đăng Nhập / Profile */}
           <div className="flex items-center gap-3">
-            {isAuthenticated && currentUser ? (
+            {mounted && isAuthenticated && currentUser ? (
               <div className="flex items-center gap-2">
                 <Link
                   href="/profile"
                   className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-slate-200 hover:border-emerald-600/40 hover:bg-emerald-50/40 transition"
                 >
                   <Image
-                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
+                    src={currentUser.avatar || '/admin-avatar-3d.jpg'}
                     alt={currentUser.name}
                     width={28}
                     height={28}
@@ -96,19 +100,17 @@ export function Navbar() {
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
-            ) : (
-              pathname !== '/login' ? (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/login"
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#02633c] hover:bg-[#01472a] text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0 whitespace-nowrap"
-                  >
-                    <LogIn className="w-4 h-4 text-emerald-300" />
-                    <span>Đăng Nhập</span>
-                  </Link>
-                </div>
-              ) : null
-            )}
+            ) : mounted && pathname !== '/login' ? (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#02633c] hover:bg-[#01472a] text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center gap-1.5 shrink-0 whitespace-nowrap"
+                >
+                  <LogIn className="w-4 h-4 text-emerald-300" />
+                  <span>Đăng Nhập</span>
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

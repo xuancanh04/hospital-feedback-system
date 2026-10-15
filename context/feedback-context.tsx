@@ -16,16 +16,13 @@ interface FeedbackContextType {
   addDepartment: (dept: Omit<Department, 'id' | 'averageRating' | 'totalReviews'>) => Promise<void>;
   updateDepartment: (id: string, dept: Partial<Department>) => Promise<void>;
   deleteDepartment: (id: string) => Promise<void>;
-  addDoctor: (doc: Omit<Doctor, 'id' | 'rating' | 'reviewCount'>) => Promise<void>;
-  updateDoctor: (id: string, doc: Partial<Doctor>) => Promise<void>;
-  deleteDoctor: (id: string) => Promise<void>;
 }
 
 const FeedbackContext = createContext<FeedbackContextType | undefined>(undefined);
 
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
-  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
+  const [doctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
 
   // Chỉ đọc từ localStorage sau khi đã mount trên Client để tránh lệch Hydration SSR
@@ -38,8 +35,6 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
           setDepartments(parsed);
         }
       }
-      const savedDocs = localStorage.getItem('hospital_7a_doctors');
-      if (savedDocs) setDoctors(JSON.parse(savedDocs));
 
       const savedRevs = localStorage.getItem('hospital_7a_reviews');
       if (savedRevs) setReviews(JSON.parse(savedRevs));
@@ -56,11 +51,6 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('hospital_7a_departments_v4', JSON.stringify(newList));
   };
 
-  const saveDoctorsLocal = (newList: Doctor[]) => {
-    setDoctors(newList);
-    localStorage.setItem('hospital_7a_doctors', JSON.stringify(newList));
-  };
-
   const addReview = async (newRevData: Omit<Review, 'id' | 'createdAt' | 'status' | 'likes'>) => {
     const newId = `rev-${Date.now()}`;
     const createdAt = new Date().toISOString();
@@ -69,7 +59,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
       ...newRevData,
       id: newId,
       createdAt,
-      status: 'pending',
+      status: 'approved',
       likes: 0,
     };
 
@@ -125,24 +115,6 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     saveDepartmentsLocal(departments.filter((d) => d.id !== id));
   };
 
-  const addDoctor = async (doc: Omit<Doctor, 'id' | 'rating' | 'reviewCount'>) => {
-    const newDoc: Doctor = {
-      ...doc,
-      id: `doc-${Date.now()}`,
-      rating: 5.0,
-      reviewCount: 0,
-    };
-    saveDoctorsLocal([...doctors, newDoc]);
-  };
-
-  const updateDoctor = async (id: string, doc: Partial<Doctor>) => {
-    saveDoctorsLocal(doctors.map((d) => (d.id === id ? { ...d, ...doc } : d)));
-  };
-
-  const deleteDoctor = async (id: string) => {
-    saveDoctorsLocal(doctors.filter((d) => d.id !== id));
-  };
-
   return (
     <FeedbackContext.Provider
       value={{
@@ -157,9 +129,6 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         addDepartment,
         updateDepartment,
         deleteDepartment,
-        addDoctor,
-        updateDoctor,
-        deleteDoctor,
       }}
     >
       {children}
