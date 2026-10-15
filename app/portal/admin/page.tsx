@@ -39,16 +39,25 @@ import {
   ChevronLeft,
   BarChart3,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  LayoutGrid,
+  Table as TableIcon,
+  Edit2,
+  Shield,
+  Stethoscope,
+  UserCheck,
+  UserX,
+  AlertTriangle
 } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 
 export default function AdminPortalPage() {
-  const { users, deleteUserByAdmin, toggleUserStatus } = useAuth();
+  const { users, createUserByAdmin, deleteUserByAdmin, toggleUserStatus } = useAuth();
   const {
     reviews,
     departments,
     addDepartment,
+    updateDepartment,
     deleteDepartment,
   } = useFeedback();
 
@@ -56,21 +65,32 @@ export default function AdminPortalPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Form states for adding department
-  const [newDeptName, setNewDeptName] = useState('');
-  const [newDeptCode, setNewDeptCode] = useState('');
-  const [newDeptCategory, setNewDeptCategory] = useState<'noi' | 'ngoai' | 'canlamsang'>('noi');
-  const [newDeptNote, setNewDeptNote] = useState('');
-  const [newDeptDesc, setNewDeptDesc] = useState('');
+  // Form states for adding/editing department
+  const [showAddDeptModal, setShowAddDeptModal] = useState(false);
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [deptFormName, setDeptFormName] = useState('');
+  const [deptFormCode, setDeptFormCode] = useState('');
+  const [deptFormCategory, setDeptFormCategory] = useState<'noi' | 'ngoai' | 'canlamsang'>('noi');
+  const [deptFormDesc, setDeptFormDesc] = useState('');
 
-  // Department list search & filter
-  // Department list search & filter
   const [deptSearch, setDeptSearch] = useState('');
   const [deptFilterCategory, setDeptFilterCategory] = useState<'all' | 'noi' | 'ngoai' | 'canlamsang'>('all');
 
-  // User list search & filter
+  // Modal thêm tài khoản quản trị
+  const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminTitle, setAdminTitle] = useState('');
+  const [adminPhone, setAdminPhone] = useState('');
+
+  // Admin user list search & filter (chỉ quản trị viên)
   const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'staff' | 'patient'>('all');
+  const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+
+  // Side drawer delete confirmation state
+  const [deletingDept, setDeletingDept] = useState<(typeof departments)[0] | null>(null);
+  const [deletingUser, setDeletingUser] = useState<(typeof users)[0] | null>(null);
 
   // Helper to determine department category
   const getDeptCategory = (d: { category?: string; name: string; code?: string }): 'noi' | 'ngoai' | 'canlamsang' => {
@@ -124,21 +144,26 @@ export default function AdminPortalPage() {
     { month: 'T04/2026', csat: csat, reviews: totalReviews },
   ];
 
-  // Department ranking data
-  const deptPerformanceData = departments.map((d) => {
-    const deptRev = reviews.filter((r) => r.departmentId === d.id);
-    const avg = deptRev.length
-      ? (deptRev.reduce((acc, c) => acc + c.overallRating, 0) / deptRev.length).toFixed(1)
-      : d.averageRating.toString();
-    return {
-      id: d.id,
-      name: d.code,
-      fullName: d.name,
-      category: getDeptCategory(d),
-      rating: parseFloat(avg),
-      reviews: deptRev.length,
-    };
-  });
+  // Department ranking data with sorting
+  const deptPerformanceData = useMemo(() => {
+    return departments.map((d) => {
+      const deptRev = reviews.filter((r) => r.departmentId === d.id);
+      const avg = deptRev.length
+        ? (deptRev.reduce((acc, c) => acc + c.overallRating, 0) / deptRev.length).toFixed(1)
+        : (d.averageRating || 4.8).toString();
+      return {
+        id: d.id,
+        code: d.code,
+        name: d.name,
+        category: getDeptCategory(d),
+        rating: parseFloat(avg),
+        reviews: deptRev.length,
+        doctorCount: d.doctorCount || 4,
+        note: d.note,
+        description: d.description,
+      };
+    }).sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
+  }, [departments, reviews]);
 
   // Filtered departments
   const filteredDepartments = useMemo(() => {
@@ -150,42 +175,103 @@ export default function AdminPortalPage() {
     });
   }, [departments, deptFilterCategory, deptSearch]);
 
-  // Filtered users
+  // Chỉ lọc tài khoản có vai trò Quản Trị Viên (Admin)
   const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      const matchRole = userRoleFilter === 'all' || u.role === userRoleFilter;
-      const q = userSearch.toLowerCase().trim();
-      const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-      return matchRole && matchSearch;
-    });
-  }, [users, userRoleFilter, userSearch]);
+    return users
+      .filter((u) => u.role === 'admin')
+      .filter((u) => {
+        const matchStatus = userStatusFilter === 'all' || (u.status || 'active') === userStatusFilter;
+        const q = userSearch.toLowerCase().trim();
+        const matchSearch = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.title && u.title.toLowerCase().includes(q)) || (u.phone && u.phone.includes(q));
+        return matchStatus && matchSearch;
+      });
+  }, [users, userStatusFilter, userSearch]);
 
-  const handleCreateDept = (e: React.FormEvent) => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDeptName.trim() || !newDeptCode.trim()) return;
-    addDepartment({
-      name: newDeptName.trim(),
-      code: newDeptCode.trim().toUpperCase(),
-      description: newDeptDesc.trim() || 'Khoa chuyên môn trực thuộc bệnh viện.',
-      iconName: 'Building2',
-      doctorCount: 4,
-      category: newDeptCategory,
-      note: newDeptNote.trim() || undefined,
+    if (!adminName.trim() || !adminEmail.trim() || !adminPassword.trim()) return;
+
+    await createUserByAdmin({
+      name: adminName.trim(),
+      email: adminEmail.trim().toLowerCase(),
+      password: adminPassword.trim(),
+      role: 'admin',
+      title: adminTitle.trim() || 'Quản Trị Viên Ban Giám Đốc',
+      phone: adminPhone.trim() || undefined,
+      avatar: '/admin-avatar-3d.jpg',
     });
-    setNewDeptName('');
-    setNewDeptCode('');
-    setNewDeptNote('');
-    setNewDeptDesc('');
+
+    setAdminName('');
+    setAdminEmail('');
+    setAdminPassword('');
+    setAdminTitle('');
+    setAdminPhone('');
+    setShowAddAdminModal(false);
+  };
+
+  const openAddDeptModal = () => {
+    setEditingDeptId(null);
+    setDeptFormName('');
+    setDeptFormCode('');
+    setDeptFormCategory('noi');
+    setDeptFormDesc('');
+    setShowAddDeptModal(true);
+  };
+
+  const openEditDeptModal = (dept: (typeof departments)[0]) => {
+    setEditingDeptId(dept.id);
+    setDeptFormName(dept.name);
+    setDeptFormCode(dept.code);
+    setDeptFormCategory(getDeptCategory(dept));
+    setDeptFormDesc(dept.description || '');
+    setShowAddDeptModal(true);
+  };
+
+  const handleSaveDept = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deptFormName.trim() || !deptFormCode.trim()) return;
+
+    if (editingDeptId) {
+      updateDepartment(editingDeptId, {
+        name: deptFormName.trim(),
+        code: deptFormCode.trim().toUpperCase(),
+        category: deptFormCategory,
+        description: deptFormDesc.trim() || 'Khoa chuyên môn trực thuộc bệnh viện.',
+      });
+    } else {
+      addDepartment({
+        name: deptFormName.trim(),
+        code: deptFormCode.trim().toUpperCase(),
+        description: deptFormDesc.trim() || 'Khoa chuyên môn trực thuộc bệnh viện.',
+        iconName: 'Building2',
+        doctorCount: 4,
+        category: deptFormCategory,
+      });
+    }
+
+    setShowAddDeptModal(false);
   };
 
   const getCategoryBadge = (cat: 'noi' | 'ngoai' | 'canlamsang') => {
     switch (cat) {
       case 'noi':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">Khối Nội</span>;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200/80 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800">
+            Khối Nội
+          </span>
+        );
       case 'ngoai':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">Khối Ngoại</span>;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/80 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800">
+            Khối Ngoại
+          </span>
+        );
       case 'canlamsang':
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Cận Lâm Sàng</span>;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+            Cận Lâm Sàng
+          </span>
+        );
     }
   };
 
@@ -334,7 +420,7 @@ export default function AdminPortalPage() {
                 </div>
                 {!isCollapsed && (
                   <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${activeTab === 'users' ? 'bg-emerald-700/80 text-emerald-100' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`}>
-                    {users.length}
+                    {filteredUsers.length}
                   </span>
                 )}
               </button>
@@ -425,10 +511,12 @@ export default function AdminPortalPage() {
 
               <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
                 <div>
-                  <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wider block">Chờ Ban Kiểm Duyệt</span>
-                  <div className="text-xl sm:text-3xl font-black text-rose-600 mt-1">{pendingReviews.length}</div>
+                  <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wider block">Phản Hồi Tích Cực</span>
+                  <div className="text-xl sm:text-3xl font-black text-emerald-600 mt-1">
+                    {reviews.filter((r) => r.overallRating >= 4).length}
+                  </div>
                 </div>
-                <span className="text-[10px] sm:text-xs text-rose-500 font-bold mt-2">Cần xử lý trong 24h</span>
+                <span className="text-[10px] sm:text-xs text-emerald-600 font-bold mt-2">Đạt mức hài lòng cao</span>
               </div>
             </div>
 
@@ -482,46 +570,87 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* BẢNG XẾP HẠNG CHẤT LƯỢNG KHOA PHÒNG */}
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-                <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                  <Award className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span>Bảng Xếp Hạng Chất Lượng Các Khoa Phòng ({deptPerformanceData.length})</span>
-                </h3>
-                <span className="text-xs text-muted-foreground">Sắp xếp theo dữ liệu khảo sát thực tế</span>
+            {/* BẢNG XẾP HẠNG CHẤT LƯỢNG KHOA PHÒNG HIỆN ĐẠI */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-900/50">
+                <div>
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Award className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Bảng Xếp Hạng Chất Lượng Khoa Phòng ({deptPerformanceData.length})</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                    Thứ hạng được tự động tính toán dựa trên điểm trung bình và số lượng phản hồi thực tế từ bệnh nhân
+                  </p>
+                </div>
+
+                <div className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 self-start sm:self-auto">
+                  Tổng đơn vị: <strong>{deptPerformanceData.length}</strong> khoa
+                </div>
               </div>
 
-              {/* KHỐI CUỘN BẢNG AN TOÀN TRÊN MOBILE */}
-              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-                <table className="w-full text-left text-xs sm:text-sm min-w-[560px]">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs sm:text-sm min-w-[700px]">
                   <thead>
-                    <tr className="border-b text-xs text-muted-foreground uppercase tracking-wider">
-                      <th className="pb-3 font-semibold">Mã</th>
-                      <th className="pb-3 font-semibold">Tên Khoa Phòng</th>
-                      <th className="pb-3 font-semibold">Khối</th>
-                      <th className="pb-3 font-semibold">Điểm TB</th>
-                      <th className="pb-3 font-semibold">Số Đánh Giá</th>
-                      <th className="pb-3 font-semibold">Xếp Hạng</th>
+                    <tr className="bg-slate-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-zinc-800">
+                      <th className="py-3 px-3 w-14 text-center">Hạng</th>
+                      <th className="py-3 px-3 w-20 text-center">Mã Khoa</th>
+                      <th className="py-3 px-4">Tên Khoa Phòng</th>
+                      <th className="py-3 px-4">Khối Chuyên Môn</th>
+                      <th className="py-3 px-4 text-center">Điểm TB</th>
+                      <th className="py-3 px-4 text-center">Lượt Đánh Giá</th>
+                      <th className="py-3 px-4 text-center">Đánh Giá Phân Cấp</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                     {deptPerformanceData.map((d, idx) => (
-                      <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                        <td className="py-3 font-bold text-emerald-800 dark:text-emerald-400 font-mono">{d.name}</td>
-                        <td className="py-3 font-semibold text-zinc-900 dark:text-zinc-100">{d.fullName}</td>
-                        <td className="py-3">{getCategoryBadge(d.category)}</td>
-                        <td className="py-3 font-bold text-amber-500 whitespace-nowrap">★ {d.rating}</td>
-                        <td className="py-3 text-muted-foreground whitespace-nowrap">{d.reviews} lượt</td>
-                        <td className="py-3 whitespace-nowrap">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      <tr 
+                        key={d.id} 
+                        className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 transition-colors"
+                      >
+                        <td className="py-3.5 px-3 text-center font-bold">
+                          {idx === 0 ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 font-extrabold text-xs">1</span>
+                          ) : idx === 1 ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-extrabold text-xs">2</span>
+                          ) : idx === 2 ? (
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-700 font-extrabold text-xs">3</span>
+                          ) : (
+                            <span className="text-slate-400 font-medium text-xs">#{idx + 1}</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                          <span className="inline-block px-2.5 py-1 rounded-md font-mono text-xs font-bold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700 min-w-[52px] text-center">
+                            {d.code}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-bold text-slate-900 dark:text-zinc-100 block">{d.name}</span>
+                          {d.note && (
+                            <span className="text-[11px] text-slate-500 dark:text-zinc-400 block line-clamp-1">
+                              • {d.note}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {getCategoryBadge(d.category)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap font-bold text-amber-500">
+                          ★ {d.rating.toFixed(1)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap font-medium text-slate-700 dark:text-zinc-300">
+                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs">
+                            {d.reviews} lượt
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             d.rating >= 4.8 
-                              ? 'bg-emerald-100 text-emerald-800' 
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60' 
                               : d.rating >= 4.5 
-                              ? 'bg-teal-100 text-teal-800' 
-                              : 'bg-amber-100 text-amber-800'
+                              ? 'bg-teal-100 text-teal-800 border border-teal-200/60' 
+                              : 'bg-amber-100 text-amber-800 border border-amber-200/60'
                           }`}>
-                            {d.rating >= 4.8 ? 'Xuất sắc' : d.rating >= 4.5 ? 'Tốt' : 'Đạt yêu cầu'}
+                            {d.rating >= 4.8 ? 'Xuất sắc' : d.rating >= 4.5 ? 'Tốt' : 'Đạt chuẩn'}
                           </span>
                         </td>
                       </tr>
@@ -534,299 +663,322 @@ export default function AdminPortalPage() {
         )}
 
         {/* =========================================================================
-            TAB 2: QUẢN LÝ KHOA PHÒNG (DEPARTMENTS CRUD)
+            TAB 2: QUẢN LÝ KHOA PHÒNG (DEPARTMENTS)
         ========================================================================= */}
         {activeTab === 'departments' && (
-          <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
-            {/* FORM THÊM KHOA PHÒNG (RESPONSIVE GRID) */}
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 shadow-xs">
-              <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 mb-4 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Thêm Khoa Phòng / Đơn Vị Mới</span>
-              </h3>
-              
-              <form onSubmit={handleCreateDept} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Tên Khoa Phòng *</label>
-                  <Input
-                    type="text"
-                    placeholder="VD: Khoa Tai Mũi Họng"
-                    value={newDeptName}
-                    onChange={(e) => setNewDeptName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Mã Viết Tắt *</label>
-                  <Input
-                    type="text"
-                    placeholder="VD: TMH"
-                    value={newDeptCode}
-                    onChange={(e) => setNewDeptCode(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Phân Thuộc Khối *</label>
-                  <Select
-                    value={newDeptCategory}
-                    onChange={(e) => setNewDeptCategory(e.target.value as any)}
-                  >
-                    <option value="noi">1. Khối Nội</option>
-                    <option value="ngoai">2. Khối Ngoại & Chuyên khoa</option>
-                    <option value="canlamsang">3. Khối Cận lâm sàng & Hỗ trợ</option>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Ghi Chú / Chuyên Môn Phụ</label>
-                  <Input
-                    type="text"
-                    placeholder="VD: Liên chuyên khoa, MRI..."
-                    value={newDeptNote}
-                    onChange={(e) => setNewDeptNote(e.target.value)}
-                  />
-                </div>
-                <div className="sm:col-span-2 lg:col-span-4">
-                  <label className="block text-xs font-semibold mb-1">Mô Tả Chức Năng</label>
-                  <Input
-                    type="text"
-                    placeholder="Khám và điều trị chuyên sâu..."
-                    value={newDeptDesc}
-                    onChange={(e) => setNewDeptDesc(e.target.value)}
-                  />
-                </div>
-                <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-md transition cursor-pointer"
-                  >
-                    Lưu Khoa Phòng
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* BỘ LỌC & TÌM KIẾM THEO KHỐI CHO 21 KHOA PHÒNG */}
-            <div className="space-y-3">
+          <div className="space-y-5 animate-in fade-in duration-200">
+            {/* THANH ĐIỀU HƯỚNG & CÔNG CỤ BẢNG KHOA PHÒNG */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 p-4 sm:p-5 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="w-full overflow-x-auto no-scrollbar -mx-1 px-1">
-                  <div className="flex items-center gap-1.5 min-w-max">
-                    {[
-                      { id: 'all', label: `Tất Cả (${departments.length})` },
-                      { id: 'noi', label: `Khối Nội (${departments.filter((d) => getDeptCategory(d) === 'noi').length})` },
-                      { id: 'ngoai', label: `Khối Ngoại (${departments.filter((d) => getDeptCategory(d) === 'ngoai').length})` },
-                      { id: 'canlamsang', label: `Cận Lâm Sàng (${departments.filter((d) => getDeptCategory(d) === 'canlamsang').length})` },
-                    ].map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setDeptFilterCategory(tab.id as any)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                          deptFilterCategory === tab.id
-                            ? 'bg-[#000080] text-white shadow-xs'
-                            : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-emerald-600" />
+                    <span>Danh Sách Khoa Phòng Bệnh Viện</span>
+                  </h3>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    {filteredDepartments.length} khoa
+                  </span>
                 </div>
 
-                <div className="w-full sm:w-64 shrink-0">
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Tìm tên khoa hoặc mã..."
-                      value={deptSearch}
-                      onChange={(e) => setDeptSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-purple-600"
-                    />
-                  </div>
+                <div className="flex items-center gap-2">
+                  {/* Nút thêm khoa phòng */}
+                  <button
+                    type="button"
+                    onClick={openAddDeptModal}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Thêm Khoa Mới</span>
+                  </button>
                 </div>
               </div>
 
-              {/* LƯỚI THẺ KHOA PHÒNG CO GIÃN THÔNG MINH */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-5">
-                {filteredDepartments.map((dept) => {
-                  const cat = getDeptCategory(dept);
-                  return (
-                    <div
-                      key={dept.id}
-                      className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow"
+              {/* HÀNG BỘ LỌC VÀ TÌM KIẾM */}
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-zinc-800">
+                {/* Nhóm nút lọc theo khối */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {[
+                    { id: 'all', label: `Tất Cả (${departments.length})` },
+                    { id: 'noi', label: `Khối Nội (${departments.filter((d) => getDeptCategory(d) === 'noi').length})` },
+                    { id: 'ngoai', label: `Khối Ngoại (${departments.filter((d) => getDeptCategory(d) === 'ngoai').length})` },
+                    { id: 'canlamsang', label: `Cận Lâm Sàng (${departments.filter((d) => getDeptCategory(d) === 'canlamsang').length})` },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setDeptFilterCategory(tab.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                        deptFilterCategory === tab.id
+                          ? 'bg-emerald-700 text-white shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300'
+                      }`}
                     >
-                      <div>
-                        <div className="flex justify-between items-start gap-2 mb-2">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-md text-[11px] font-bold font-mono bg-slate-100 text-slate-800">
-                              {dept.code}
-                            </span>
-                            {getCategoryBadge(cat)}
-                          </div>
-                          
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Xóa khoa ${dept.name}?`)) deleteDepartment(dept.id);
-                            }}
-                            className="text-zinc-400 hover:text-rose-600 p-1 transition cursor-pointer"
-                            title="Xóa khoa"
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Thanh tìm kiếm */}
+                <div className="relative w-full md:w-72 shrink-0">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo tên khoa hoặc mã khoa..."
+                    value={deptSearch}
+                    onChange={(e) => setDeptSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* BẢNG CHI TIẾT KHOA PHÒNG (TABLE VIEW) */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs sm:text-sm min-w-[720px]">
+                  <thead>
+                    <tr className="bg-slate-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-zinc-800">
+                      <th className="py-3 px-3 w-24 text-center">Mã Khoa</th>
+                      <th className="py-3 px-4">Tên Khoa Phòng</th>
+                      <th className="py-3 px-4">Khối Chuyên Môn</th>
+                      <th className="py-3 px-4">Mô Tả Chức Năng</th>
+                      <th className="py-3 px-4 text-center">Đánh Giá</th>
+                      <th className="py-3 px-4 text-right">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                    {filteredDepartments.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-slate-400 text-xs">
+                          Không tìm thấy khoa phòng nào phù hợp với điều kiện tìm kiếm.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredDepartments.map((dept) => {
+                        const cat = getDeptCategory(dept);
+                        return (
+                          <tr 
+                            key={dept.id} 
+                            className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 transition-colors"
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <h4 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 leading-snug">
-                          {dept.name}
-                        </h4>
-                        {dept.note && (
-                          <span className="text-[11px] text-blue-700 dark:text-blue-300 font-semibold mt-0.5 block">
-                            • {dept.note}
-                          </span>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed">
-                          {dept.description}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-muted-foreground flex justify-between items-center">
-                        <span>{dept.doctorCount || 4} Bác sĩ</span>
-                        <span className="font-bold text-amber-500">★ {dept.averageRating || '4.8'}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                            <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                              <span className="inline-block px-2.5 py-1 rounded-md font-mono text-xs font-bold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700 min-w-[56px] text-center">
+                                {dept.code}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="font-bold text-slate-900 dark:text-zinc-100 block text-sm">
+                                {dept.name}
+                              </span>
+                              {dept.note && (
+                                <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 block mt-0.5">
+                                  • {dept.note}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              {getCategoryBadge(cat)}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs text-slate-500 dark:text-zinc-400 max-w-xs">
+                              <p className="line-clamp-2 leading-relaxed">
+                                {dept.description || 'Chuyên môn điều trị chất lượng cao.'}
+                              </p>
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap font-bold text-amber-500">
+                              ★ {dept.averageRating || '4.8'}
+                            </td>
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditDeptModal(dept)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                  title="Chỉnh sửa thông tin khoa"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingDept(dept)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                  title="Xóa khoa"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         )}
 
         {/* =========================================================================
-            TAB 4: TÀI KHOẢN & PHÂN QUYỀN (USERS)
+            TAB 3: TÀI KHOẢN QUẢN TRỊ VIÊN (ADMINS ONLY)
         ========================================================================= */}
         {activeTab === 'users' && (
-          <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-300">
-            {/* TỔNG QUAN PHÂN QUYỀN THỰC TẾ */}
-            <div className="bg-purple-50 dark:bg-purple-950/30 p-4 sm:p-5 rounded-2xl border border-purple-200 dark:border-purple-850 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-5 animate-in fade-in duration-200">
+            {/* KHỐI TỔNG QUAN QUẢN TRỊ VIÊN */}
+            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-emerald-50 dark:from-purple-950/20 dark:to-zinc-900 p-4 sm:p-5 rounded-2xl border border-purple-200/80 dark:border-purple-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="font-bold text-xs sm:text-sm text-emerald-950 dark:text-emerald-200">
-                  Phân Quyền Người Dùng Hệ Thống
+                <h3 className="font-bold text-sm text-slate-900 dark:text-purple-200 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-purple-600" />
+                  <span>Danh Sách Tài Khoản Quản Trị Hệ Thống (Admin)</span>
                 </h3>
-                <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
-                  • <strong>Quản Trị Viên (Admin):</strong> Giám sát toàn diện, thống kê CSAT và duyệt đánh giá.<br />
-                  • <strong>Cán bộ y tế & Bác sĩ:</strong> Nhận phản hồi chuyên môn trực tiếp.
+                <p className="text-xs text-slate-600 dark:text-zinc-300 mt-1 leading-relaxed">
+                  Các tài khoản Quản Trị Viên có toàn quyền giám sát hệ thống, theo dõi thống kê CSAT, quản lý danh mục khoa phòng và phân quyền tài khoản điều hành.
                 </p>
               </div>
-              <div className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-700 text-white self-start sm:self-auto shrink-0">
-                Tổng: {users.length} tài khoản
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-700 text-white shadow-sm">
+                  {filteredUsers.length} Quản Trị Viên
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddAdminModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm Admin</span>
+                </button>
               </div>
             </div>
 
-            {/* BẢNG TÀI KHOẢN KÈM BỘ LỌC TÌM KIẾM */}
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Danh Sách Tài Khoản Quản Trị ({filteredUsers.length})</span>
-                </h3>
+            {/* BẢNG TÀI KHOẢN ADMIN HIỆN ĐẠI KÈM BỘ LỌC */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
+              {/* TOOLBAR TÌM KIẾM & BỘ LỌC */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-900/50">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-purple-600 shrink-0" />
+                    <span>Ban Quản Trị ({filteredUsers.length})</span>
+                  </h3>
+                </div>
 
-                <div className="flex items-center gap-2 flex-col sm:flex-row">
-                  <div className="relative w-full sm:w-56">
-                    <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Tìm tên hoặc email..."
+                      placeholder="Tìm theo tên, email, chức danh..."
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-purple-600 transition"
                     />
                   </div>
 
                   <Select
-                    value={userRoleFilter}
-                    onChange={(e) => setUserRoleFilter(e.target.value as any)}
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value as any)}
+                    className="!h-8 !py-1 text-xs w-full sm:w-auto"
                   >
-                    <option value="all">Tất cả vai trò</option>
-                    <option value="admin">Quản Trị Viên (Admin)</option>
-                    <option value="staff">Bác sĩ / Khoa (Staff)</option>
-                    <option value="patient">Bệnh nhân (Patient)</option>
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="active">Đang hoạt động</option>
+                    <option value="suspended">Đang tạm khóa</option>
                   </Select>
                 </div>
               </div>
 
-              {/* BẢNG CUỘN NGANG AN TOÀN TRÊN MOBILE */}
-              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+              {/* BẢNG HIỂN THỊ TÀI KHOẢN ADMIN */}
+              <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm min-w-[650px]">
                   <thead>
-                    <tr className="border-b text-xs text-muted-foreground uppercase tracking-wider">
-                      <th className="pb-3 font-semibold">Người Dùng</th>
-                      <th className="pb-3 font-semibold">Email</th>
-                      <th className="pb-3 font-semibold">Vai Trò</th>
-                      <th className="pb-3 font-semibold">Trạng Thái</th>
-                      <th className="pb-3 font-semibold text-right">Thao Tác</th>
+                    <tr className="bg-slate-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-zinc-800">
+                      <th className="py-3 px-4">Quản Trị Viên</th>
+                      <th className="py-3 px-4">Email Đăng Nhập</th>
+                      <th className="py-3 px-4">Quyền Hạn</th>
+                      <th className="py-3 px-4">Điện Thoại</th>
+                      <th className="py-3 px-4 text-center">Trạng Thái</th>
+                      <th className="py-3 px-4 text-right">Thao Tác</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {filteredUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors">
-                        <td className="py-3">
-                          <div className="flex items-center gap-3">
-                            <Image
-                              src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'}
-                              alt={u.name}
-                              width={36}
-                              height={36}
-                              unoptimized
-                              className="w-9 h-9 rounded-full object-cover ring-1 ring-zinc-200 shrink-0"
-                            />
-                            <div>
-                              <span className="font-semibold text-zinc-900 dark:text-zinc-100 block">{u.name}</span>
-                              <span className="text-[11px] text-zinc-400">{u.title || 'Người dùng'}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 font-mono text-xs text-zinc-600 dark:text-zinc-300">{u.email}</td>
-                        <td className="py-3 whitespace-nowrap">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            u.role === 'admin'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : u.role === 'staff'
-                              ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                          }`}>
-                            {u.role === 'admin' ? '🛡️ Quản Trị Viên' : u.role === 'staff' ? '🩺 Bác Sĩ / Khoa' : '👤 Bệnh Nhân'}
-                          </span>
-                        </td>
-                        <td className="py-3 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => toggleUserStatus(u.id)}
-                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition ${
-                              u.status === 'suspended'
-                                ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
-                                : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                            }`}
-                          >
-                            {u.status === 'suspended' ? 'Tạm Khóa' : 'Đang Hoạt Động'}
-                          </button>
-                        </td>
-                        <td className="py-3 text-right whitespace-nowrap">
-                          {u.role !== 'admin' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`Xóa tài khoản của ${u.name}?`)) deleteUserByAdmin(u.id);
-                              }}
-                              className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                              title="Xóa tài khoản"
-                            >
-                              <Trash2 className="w-4 h-4 ml-auto" />
-                            </button>
-                          )}
+                  <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-slate-400 text-xs">
+                          Không tìm thấy tài khoản quản trị nào phù hợp với tìm kiếm.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredUsers.map((u) => {
+                        const isSuspended = u.status === 'suspended';
+                        return (
+                          <tr key={u.id} className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <Image
+                                  src={u.avatar || '/admin-avatar-3d.jpg'}
+                                  alt={u.name}
+                                  width={36}
+                                  height={36}
+                                  unoptimized
+                                  className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-100 dark:ring-purple-900 shrink-0"
+                                />
+                                <div>
+                                  <span className="font-bold text-slate-900 dark:text-zinc-100 block">{u.name}</span>
+                                  <span className="text-[11px] text-slate-400 font-medium">{u.title || 'Quản Trị Viên Hệ Thống'}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-4 font-mono text-xs text-slate-600 dark:text-zinc-300">
+                              {u.email}
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+                                <Shield className="w-3 h-3" />
+                                Quản Trị Toàn Quyền
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-600 dark:text-zinc-300 font-medium">
+                              {u.phone || '028 3855 5727'}
+                            </td>
+                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => toggleUserStatus(u.id)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold cursor-pointer transition ${
+                                  isSuspended
+                                    ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-300'
+                                    : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                }`}
+                                title="Nhấn để đổi trạng thái"
+                              >
+                                {isSuspended ? (
+                                  <>
+                                    <UserX className="w-3 h-3" />
+                                    <span>Tạm Khóa</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="w-3 h-3" />
+                                    <span>Hoạt Động</span>
+                                  </>
+                                )}
+                              </button>
+                            </td>
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              {filteredUsers.length > 1 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingUser(u)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-zinc-800 transition cursor-pointer"
+                                  title="Xóa tài khoản"
+                                >
+                                  <Trash2 className="w-4 h-4 ml-auto" />
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 italic">Mặc định</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -836,6 +988,416 @@ export default function AdminPortalPage() {
 
         </div>
       </div>
+
+      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): THÊM / SỬA KHOA PHÒNG */}
+      {showAddDeptModal && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop mờ phía sau */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
+            onClick={() => setShowAddDeptModal(false)}
+          />
+
+          {/* Drawer trượt từ bên phải */}
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full shadow-2xl flex flex-col z-10 border-l border-slate-200 dark:border-zinc-800 animate-in slide-in-from-right duration-300">
+            {/* Header Drawer */}
+            <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-900/70">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    {editingDeptId ? 'Chỉnh Sửa Khoa Phòng' : 'Thêm Khoa Phòng Mới'}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    {editingDeptId ? 'Cập nhật lại thông tin chuyên môn' : 'Đưa khoa phòng mới vào danh mục phục vụ'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddDeptModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
+                title="Đóng bảng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Body - Có scroll nếu nội dung dài */}
+            <form onSubmit={handleSaveDept} className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                  Tên Khoa Phòng *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="VD: Khoa Khám Bệnh, Khoa Ngoại Tiêu Hóa..."
+                  value={deptFormName}
+                  onChange={(e) => setDeptFormName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                    Mã Khoa (Viết tắt) *
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="VD: KB, NTH, TMH..."
+                    value={deptFormCode}
+                    onChange={(e) => setDeptFormCode(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                    Khối Chuyên Môn *
+                  </label>
+                  <Select
+                    value={deptFormCategory}
+                    onChange={(e) => setDeptFormCategory(e.target.value as any)}
+                  >
+                    <option value="noi">Khối Nội</option>
+                    <option value="ngoai">Khối Ngoại & Chuyên khoa</option>
+                    <option value="canlamsang">Khối Cận Lâm Sàng & Hỗ trợ</option>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                  Mô Tả Chức Năng
+                </label>
+                <textarea
+                  rows={4}
+                  placeholder="Khám chữa bệnh chuyên sâu theo tiêu chuẩn Bộ Y tế..."
+                  value={deptFormDesc}
+                  onChange={(e) => setDeptFormDesc(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-700 text-xs text-slate-500 space-y-1">
+                <span className="font-bold text-slate-700 dark:text-zinc-300 block">Lưu ý quản trị:</span>
+                <p>Mã khoa và tên khoa sau khi lưu sẽ lập tức đồng bộ sang Kiosk và trang khảo sát bệnh nhân trực tuyến.</p>
+              </div>
+
+              {/* Drawer Footer Actions */}
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDeptModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer transition"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
+                >
+                  {editingDeptId ? 'Lưu Thay Đổi' : 'Thêm Khoa Mới'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): THÊM QUẢN TRỊ VIÊN */}
+      {showAddAdminModal && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop mờ phía sau */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
+            onClick={() => setShowAddAdminModal(false)}
+          />
+
+          {/* Drawer trượt từ bên phải */}
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full shadow-2xl flex flex-col z-10 border-l border-slate-200 dark:border-zinc-800 animate-in slide-in-from-right duration-300">
+            {/* Header Drawer */}
+            <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-900/70">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 flex items-center justify-center">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Thêm Quản Trị Viên
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400">
+                    Cấp tài khoản điều hành hệ thống mới
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddAdminModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
+                title="Đóng bảng"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleCreateAdmin} className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                  Họ và tên cán bộ quản trị *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="VD: Thượng tá Nguyễn Văn A"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                  Email đăng nhập hệ thống *
+                </label>
+                <Input
+                  type="email"
+                  placeholder="VD: admin2@benhvien7a.vn"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                  Mật khẩu khởi tạo *
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Nhập mật khẩu..."
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                    Chức danh / Phòng ban
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="VD: Ban Giám Đốc"
+                    value={adminTitle}
+                    onChange={(e) => setAdminTitle(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
+                    Số điện thoại liên hệ
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="VD: 028 3855..."
+                    value={adminPhone}
+                    onChange={(e) => setAdminPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800 text-xs text-purple-700 dark:text-purple-300 space-y-1">
+                <span className="font-bold block">Phân quyền: Quản trị viên</span>
+                <p>Tài khoản có quyền giám sát toàn bộ báo cáo phân tích, theo dõi đánh giá của bệnh nhân, và quản lý danh mục phòng ban.</p>
+              </div>
+
+              {/* Drawer Footer Actions */}
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddAdminModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer transition"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
+                >
+                  Tạo Tài Khoản Admin
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): XÁC NHẬN XÓA KHOA PHÒNG */}
+      {deletingDept && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
+            onClick={() => setDeletingDept(null)}
+          />
+
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full shadow-2xl flex flex-col z-10 border-l border-slate-200 dark:border-zinc-800 animate-in slide-in-from-right duration-300">
+            <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-rose-50/70 dark:bg-rose-950/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-rose-900 dark:text-rose-200">
+                    Xác Nhận Xóa Khoa Phòng
+                  </h3>
+                  <p className="text-xs text-rose-600/80 dark:text-rose-400">
+                    Thao tác này sẽ gỡ bỏ khoa khỏi hệ thống
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingDept(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 p-5 space-y-4 overflow-y-auto">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">Mã khoa:</span>
+                  <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-zinc-700 text-slate-800 dark:text-zinc-200">
+                    {deletingDept.code}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">Tên khoa phòng:</span>
+                  <span className="font-bold text-sm text-slate-900 dark:text-white">
+                    {deletingDept.name}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">Khối:</span>
+                  {getCategoryBadge(getDeptCategory(deletingDept))}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                ⚠️ Khoa phòng này sẽ không còn hiển thị trên các thiết bị Kiosk và danh sách đánh giá của bệnh nhân.
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeletingDept(null)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer transition"
+              >
+                Giữ Lại
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteDepartment(deletingDept.id);
+                  setDeletingDept(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
+              >
+                Xác Nhận Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): XÁC NHẬN XÓA TÀI KHOẢN ADMIN */}
+      {deletingUser && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
+            onClick={() => setDeletingUser(null)}
+          />
+
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full shadow-2xl flex flex-col z-10 border-l border-slate-200 dark:border-zinc-800 animate-in slide-in-from-right duration-300">
+            <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-rose-50/70 dark:bg-rose-950/20">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-rose-900 dark:text-rose-200">
+                    Xóa Tài Khoản Quản Trị
+                  </h3>
+                  <p className="text-xs text-rose-600/80 dark:text-rose-400">
+                    Hủy quyền truy cập hệ thống
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingUser(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 p-5 space-y-4 overflow-y-auto">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">Họ tên:</span>
+                  <span className="font-bold text-sm text-slate-900 dark:text-white">
+                    {deletingUser.name}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">Email:</span>
+                  <span className="font-mono text-xs text-slate-700 dark:text-zinc-300">
+                    {deletingUser.email}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-500 font-medium">Chức danh:</span>
+                  <span className="text-xs text-slate-700 dark:text-zinc-300 font-medium">
+                    {deletingUser.title || 'Quản trị viên'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300">
+                Tài khoản này sẽ bị thu hồi toàn bộ quyền quản trị và không thể đăng nhập vào cổng quản trị viên được nữa.
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeletingUser(null)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer transition"
+              >
+                Hủy Bỏ
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteUserByAdmin(deletingUser.id);
+                  setDeletingUser(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
+              >
+                Xác Nhận Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

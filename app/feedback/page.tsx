@@ -19,11 +19,10 @@ import {
 export default function FeedbackPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { departments, doctors, addReview } = useFeedback();
+  const { departments, addReview } = useFeedback();
 
   // Form State
   const [departmentId, setDepartmentId] = useState(departments[0]?.id || '');
-  const [doctorId, setDoctorId] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -49,9 +48,6 @@ export default function FeedbackPage() {
   const [images, setImages] = useState<string[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Doctors filtered by department
-  const filteredDoctors = doctors.filter((doc) => doc.departmentId === departmentId);
-
   const handleAddImage = () => {
     const trimmed = imageUrl.trim();
     if (trimmed && (trimmed.startsWith('https://') || trimmed.startsWith('http://'))) {
@@ -69,7 +65,6 @@ export default function FeedbackPage() {
     if (!title.trim() || !content.trim()) return;
 
     const currentDept = departments.find((d) => d.id === departmentId);
-    const currentDoc = doctors.find((d) => d.id === doctorId);
 
     // Xử lý bảo mật: Nếu người dùng chọn ẩn danh, tuyệt đối không lưu id, tên thật hoặc avatar
     const effectiveUserId = isAnonymous ? 'anonymous-user' : (currentUser?.id || `guest-${Date.now()}`);
@@ -83,8 +78,6 @@ export default function FeedbackPage() {
       isAnonymous,
       departmentId,
       departmentName: currentDept ? currentDept.name : 'Khoa Khám Bệnh',
-      doctorId: currentDoc ? currentDoc.id : undefined,
-      doctorName: currentDoc ? currentDoc.name : undefined,
       overallRating,
       criteria: {
         serviceAttitude,
@@ -112,8 +105,8 @@ export default function FeedbackPage() {
             Gửi Đánh Giá Thành Công!
           </h2>
           <p className="text-zinc-600 dark:text-zinc-300 text-sm leading-relaxed max-w-lg mx-auto">
-            Chân thành cảm ơn Quý bệnh nhân đã dành thời gian đóng góp ý kiến quý báu cho Bệnh viện Quân y 7A. 
-            Bài viết của bạn đã được chuyển vào hàng đợi kiểm duyệt và sẽ sớm được công bố.
+            Chân thành cảm ơn Quý khách hàng & Bệnh nhân đã dành thời gian đóng góp ý kiến quý báu cho Bệnh viện Quân y 7A. 
+            Đánh giá của bạn đã được ghi nhận trực tiếp vào hệ thống.
           </p>
           <div className="pt-4 flex flex-col sm:flex-row justify-center gap-3">
             <button
@@ -165,32 +158,12 @@ export default function FeedbackPage() {
               </label>
               <Select
                 value={departmentId}
-                onChange={(e) => {
-                  setDepartmentId(e.target.value);
-                  setDoctorId('');
-                }}
+                onChange={(e) => setDepartmentId(e.target.value)}
                 required
               >
                 {departments.map((dept) => (
                   <option key={dept.id} value={dept.id}>
                     {dept.name} ({dept.code})
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                Bác sĩ trực tiếp thăm khám (Tùy chọn)
-              </label>
-              <Select
-                value={doctorId}
-                onChange={(e) => setDoctorId(e.target.value)}
-              >
-                <option value="">-- Chọn bác sĩ (nếu nhớ) --</option>
-                {filteredDoctors.map((doc) => (
-                  <option key={doc.id} value={doc.id}>
-                    {doc.name} - {doc.title}
                   </option>
                 ))}
               </Select>

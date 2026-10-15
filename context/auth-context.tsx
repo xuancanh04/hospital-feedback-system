@@ -26,7 +26,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const savedUsers = localStorage.getItem('hospital_7a_all_users');
       if (savedUsers) {
         const parsed = JSON.parse(savedUsers);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Tự động thay thế avatar cũ nếu đang lưu trong localStorage
+          return parsed.map((u) => {
+            if (u.id === 'user-admin' && (!u.avatar || u.avatar.includes('photo-'))) {
+              return { ...u, avatar: '/admin-avatar-3d.jpg' };
+            }
+            return u;
+          });
+        }
       }
     } catch {
       // ignore
@@ -40,7 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const savedSession = localStorage.getItem('hospital_7a_current_session');
       if (savedSession) {
         const parsedUser = JSON.parse(savedSession);
-        if (parsedUser && parsedUser.id) return parsedUser;
+        if (parsedUser && parsedUser.id) {
+          if (parsedUser.id === 'user-admin' && (!parsedUser.avatar || parsedUser.avatar.includes('photo-'))) {
+            parsedUser.avatar = '/admin-avatar-3d.jpg';
+            localStorage.setItem('hospital_7a_current_session', JSON.stringify(parsedUser));
+          }
+          return parsedUser;
+        }
       }
     } catch {
       // ignore
@@ -140,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       status: 'active',
       avatar: userData.avatar || (userData.role === 'staff' 
         ? 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80'
-        : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80'),
+        : 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=200&auto=format&fit=crop&q=80'),
     };
     saveUsersList([...users, newUser]);
   };
