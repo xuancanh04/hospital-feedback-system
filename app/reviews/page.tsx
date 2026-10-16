@@ -9,7 +9,7 @@ import {
   Filter, 
   Star, 
   RotateCcw,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 
 export default function ReviewsPage() {
@@ -55,8 +55,8 @@ export default function ReviewsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
       <div className="mb-8">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-semibold text-xs mb-2">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-semibold text-xs mb-2 border border-emerald-200/60">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
           Minh Bạch Thông Tin & Dân Chủ Quân Y
         </div>
         <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">

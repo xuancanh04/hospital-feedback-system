@@ -23,6 +23,13 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     () => false
   );
 
+  // Nếu chưa đăng nhập: Tự động chuyển thẳng sang màn hình đăng nhập
+  React.useEffect(() => {
+    if (isClient && (!isAuthenticated || !currentUser)) {
+      router.replace('/login');
+    }
+  }, [isClient, isAuthenticated, currentUser, router]);
+
   if (!isClient) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
@@ -30,13 +37,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       </div>
     );
   }
-
-  // Nếu chưa đăng nhập: Tự động chuyển thẳng sang màn hình đăng nhập
-  React.useEffect(() => {
-    if (isClient && (!isAuthenticated || !currentUser)) {
-      router.replace('/login');
-    }
-  }, [isClient, isAuthenticated, currentUser, router]);
 
   if (!isAuthenticated || !currentUser) {
     return (

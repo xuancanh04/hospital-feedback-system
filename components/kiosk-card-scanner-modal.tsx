@@ -8,7 +8,6 @@ import {
   CameraOff, 
   X, 
   CheckCircle2, 
-  Sparkles, 
   ShieldCheck, 
   Keyboard, 
   User, 
