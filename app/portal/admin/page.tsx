@@ -46,9 +46,12 @@ import {
   Stethoscope,
   UserCheck,
   UserX,
-  AlertTriangle
+  AlertTriangle,
+  History
 } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
+import { AdminAnalyticsView } from '@/components/admin-analytics-view';
+import { PatientReviewsHistory } from '@/components/patient-reviews-history';
 
 export default function AdminPortalPage() {
   const { users, createUserByAdmin, deleteUserByAdmin, toggleUserStatus } = useAuth();
@@ -58,9 +61,10 @@ export default function AdminPortalPage() {
     addDepartment,
     updateDepartment,
     deleteDepartment,
+    updateReviewStatus,
   } = useFeedback();
 
-  const [activeTab, setActiveTab] = useState<'analytics' | 'departments' | 'users'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'reviews' | 'departments' | 'users'>('analytics');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -356,6 +360,32 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => {
+                  setActiveTab('reviews');
+                  if (window.innerWidth < 1024) setSidebarOpen(false);
+                }}
+                title="Lịch Sử Đánh Giá"
+                className={`w-full flex items-center ${
+                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
+                } rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer group ${
+                  activeTab === 'reviews'
+                    ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25'
+                    : 'text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-zinc-800/60'
+                }`}
+              >
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+                  <History className={`w-4 h-4 shrink-0 transition-colors ${activeTab === 'reviews' ? 'text-white' : 'text-teal-600 dark:text-teal-400 group-hover:text-teal-700'}`} />
+                  {!isCollapsed && <span>Lịch Sử Đánh Giá</span>}
+                </div>
+                {!isCollapsed && (
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${activeTab === 'reviews' ? 'bg-emerald-700/80 text-emerald-100' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`}>
+                    {reviews.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setActiveTab('departments');
                   if (window.innerWidth < 1024) setSidebarOpen(false);
                 }}
@@ -436,6 +466,7 @@ export default function AdminPortalPage() {
             <div>
               <h1 className="text-lg sm:text-xl md:text-2xl font-black text-[#000080] dark:text-white tracking-tight uppercase">
                 {activeTab === 'analytics' && 'Thống Kê & Báo Cáo Chất Lượng'}
+                {activeTab === 'reviews' && 'Lịch Sử Đánh Giá Của Bệnh Nhân'}
                 {activeTab === 'departments' && 'Quản Lý Danh Sách Khoa Phòng'}
                 {activeTab === 'users' && 'Quản Lý Tài Khoản Quản Trị'}
               </h1>
@@ -452,232 +483,19 @@ export default function AdminPortalPage() {
           </div>
 
         {activeTab === 'analytics' && (
-          <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
-            
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4.5">
-              <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
-                <div>
-                  <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wider block">Tổng Lượt Đánh Giá</span>
-                  <div className="text-xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100 mt-1">{totalReviews}</div>
-                </div>
-                <span className="text-[10px] sm:text-xs text-emerald-600 font-bold mt-2 inline-flex items-center gap-1">
-                  ↑ Tăng 12% so với tháng trước
-                </span>
-              </div>
+          <AdminAnalyticsView
+            reviews={reviews}
+            departments={departments}
+            getDeptCategory={getDeptCategory}
+          />
+        )}
 
-              <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
-                <div>
-                  <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wider block">Điểm TB Toàn Viện</span>
-                  <div className="text-xl sm:text-3xl font-black text-amber-500 mt-1">★ {avgRating} / 5.0</div>
-                </div>
-                <span className="text-[10px] sm:text-xs text-zinc-500 font-medium mt-2">Đạt chuẩn chất lượng BQP</span>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
-                <div>
-                  <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wider block">Chỉ Số Hài Lòng (CSAT)</span>
-                  <div className="text-xl sm:text-3xl font-black text-teal-600 mt-1">{csat}%</div>
-                </div>
-                <span className="text-[10px] sm:text-xs text-emerald-600 font-bold mt-2">Mục tiêu quý: ≥ 92%</span>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
-                <div>
-                  <span className="text-[11px] sm:text-xs text-muted-foreground font-semibold uppercase tracking-wider block">Phản Hồi Tích Cực</span>
-                  <div className="text-xl sm:text-3xl font-black text-emerald-600 mt-1">
-                    {reviews.filter((r) => r.overallRating >= 4).length}
-                  </div>
-                </div>
-                <span className="text-[10px] sm:text-xs text-emerald-600 font-bold mt-2">Đạt mức hài lòng cao</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              
-              <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Xu Hướng CSAT 6 Tháng Gần Nhất</span>
-                  </h3>
-                </div>
-                <div className="h-60 sm:h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                      <XAxis dataKey="month" stroke="#888888" fontSize={11} />
-                      <YAxis domain={[80, 100]} stroke="#888888" fontSize={11} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
-                      <Line type="monotone" dataKey="csat" name="CSAT (%)" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>Cơ Cấu Điểm Đánh Giá (Phân Bố Số Sao)</span>
-                  </h3>
-                </div>
-                <div className="h-60 sm:h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={ratingDistributionData} layout="vertical" margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
-                      <XAxis type="number" stroke="#888888" fontSize={11} />
-                      <YAxis dataKey="name" type="category" stroke="#888888" fontSize={11} />
-                      <Tooltip />
-                      <Bar dataKey="count" name="Số lượt" radius={[0, 6, 6, 0]}>
-                        {ratingDistributionData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
-              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-900/50">
-                <div>
-                  <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Award className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>Bảng Xếp Hạng Chất Lượng Khoa Phòng ({deptPerformanceData.length})</span>
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                    Thứ hạng được tự động tính toán dựa trên điểm trung bình và số lượng phản hồi thực tế từ bệnh nhân
-                  </p>
-                </div>
-
-                <div className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 self-start sm:self-auto">
-                  Tổng đơn vị: <strong>{deptPerformanceData.length}</strong> khoa
-                </div>
-              </div>
-
-              <div className="md:hidden divide-y divide-slate-100 dark:divide-zinc-800">
-                {deptPerformanceData.map((d, idx) => (
-                  <div key={d.id} className="p-3.5 space-y-2 hover:bg-slate-50/60 dark:hover:bg-zinc-800/30 transition-colors">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {idx === 0 ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 font-extrabold text-xs">1</span>
-                        ) : idx === 1 ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-extrabold text-xs">2</span>
-                        ) : idx === 2 ? (
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-700 font-extrabold text-xs">3</span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-500 font-bold text-xs">#{idx + 1}</span>
-                        )}
-                        <span className="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700">
-                          {d.code}
-                        </span>
-                        <span className="font-bold text-slate-900 dark:text-zinc-100 text-sm">
-                          {d.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200/60 text-xs shrink-0">
-                        ★ {d.rating.toFixed(1)}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <div>
-                        {getCategoryBadge(d.category)}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500 text-[11px] font-medium">
-                          {d.reviews} lượt
-                        </span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                          d.rating >= 4.8 
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60' 
-                            : d.rating >= 4.5 
-                            ? 'bg-teal-100 text-teal-800 border border-teal-200/60' 
-                            : 'bg-amber-100 text-amber-800 border border-amber-200/60'
-                        }`}>
-                          {d.rating >= 4.8 ? 'Xuất sắc' : d.rating >= 4.5 ? 'Tốt' : 'Đạt chuẩn'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left text-xs sm:text-sm min-w-[700px]">
-                  <thead>
-                    <tr className="bg-slate-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-zinc-800">
-                      <th className="py-3 px-3 w-14 text-center">Hạng</th>
-                      <th className="py-3 px-3 w-20 text-center">Mã Khoa</th>
-                      <th className="py-3 px-4">Tên Khoa Phòng</th>
-                      <th className="py-3 px-4">Khối Chuyên Môn</th>
-                      <th className="py-3 px-4 text-center">Điểm TB</th>
-                      <th className="py-3 px-4 text-center">Lượt Đánh Giá</th>
-                      <th className="py-3 px-4 text-center">Đánh Giá Phân Cấp</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                    {deptPerformanceData.map((d, idx) => (
-                      <tr 
-                        key={d.id} 
-                        className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/40 transition-colors"
-                      >
-                        <td className="py-3.5 px-3 text-center font-bold">
-                          {idx === 0 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 font-extrabold text-xs">1</span>
-                          ) : idx === 1 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-extrabold text-xs">2</span>
-                          ) : idx === 2 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-700 font-extrabold text-xs">3</span>
-                          ) : (
-                            <span className="text-slate-400 font-medium text-xs">#{idx + 1}</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                          <span className="inline-block px-2.5 py-1 rounded-md font-mono text-xs font-bold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700 min-w-[52px] text-center">
-                            {d.code}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold text-slate-900 dark:text-zinc-100 block">{d.name}</span>
-                          {d.note && (
-                            <span className="text-[11px] text-slate-500 dark:text-zinc-400 block line-clamp-1">
-                              • {d.note}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {getCategoryBadge(d.category)}
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap font-bold text-amber-500">
-                          ★ {d.rating.toFixed(1)}
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap font-medium text-slate-700 dark:text-zinc-300">
-                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-xs">
-                            {d.reviews} lượt
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            d.rating >= 4.8 
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60' 
-                              : d.rating >= 4.5 
-                              ? 'bg-teal-100 text-teal-800 border border-teal-200/60' 
-                              : 'bg-amber-100 text-amber-800 border border-amber-200/60'
-                          }`}>
-                            {d.rating >= 4.8 ? 'Xuất sắc' : d.rating >= 4.5 ? 'Tốt' : 'Đạt chuẩn'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+                {activeTab === 'reviews' && (
+          <PatientReviewsHistory
+            reviews={reviews}
+            departments={departments}
+            onUpdateStatus={updateReviewStatus}
+          />
         )}
 
         {activeTab === 'departments' && (

@@ -12,14 +12,16 @@ import {
   ShieldCheck,
   UserCheck,
   X,
-  ArrowLeft
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useFeedback } from '@/context/feedback-context';
 import { INITIAL_DEPARTMENTS } from '@/lib/mock-data';
 import { PatientCardInfo } from '@/types';
 
-// Danh sách 10 thẻ phản hồi nhanh chuẩn hóa, cân đối hoàn hảo cho lưới 2 cột
-const QUICK_TAGS = [
+// Danh sách các thẻ khen ngợi (Dành cho 4 - 5 sao: Rất hài lòng / Hài lòng)
+const POSITIVE_TAGS = [
   'Bác sĩ tận tình, chu đáo',
   'Y tá hướng dẫn nhiệt tình',
   'Thủ tục nhanh chóng',
@@ -29,8 +31,30 @@ const QUICK_TAGS = [
   'Chi phí công khai, minh bạch',
   'Trang thiết bị hiện đại',
   'An ninh, trật tự chu đáo',
-  'Cán bộ tiếp đón ân cần'
+  'Cán bộ tiếp đón ân cần',
+  'Phòng bệnh thoáng mát',
+  'Cấp cứu xử trí kịp thời',
+  'Cơm viện đầy đủ dinh dưỡng',
+  'Nhân viên vui vẻ niềm nở'
 ];
+
+// Danh sách các thẻ góp ý / phàn nàn (Dành cho 1 - 2 - 3 sao: Chưa hài lòng / Thất vọng)
+const CRITICAL_TAGS = [
+  'Thời gian chờ đợi quá lâu',
+  'Thái độ tiếp đón chưa niềm nở',
+  'Bác sĩ tư vấn quá nhanh',
+  'Khu vệ sinh chưa sạch sẽ',
+  'Thủ tục giấy tờ còn rườm rà',
+  'Hệ thống gọi số hay bị lỗi',
+  'Nhà xe bệnh viện quá tải',
+  'Chi phí chưa giải thích rõ',
+  'Phòng chờ còn oi bức, ngột ngạt',
+  'Bảng chỉ dẫn chưa rõ ràng',
+  'Điều dưỡng trả lời gắt gỏng',
+  'Cần tăng thêm bàn khám buổi sáng'
+];
+
+const TAGS_PER_PAGE = 8;
 
 export default function TouchMainApp() {
   const { departments, addReview } = useFeedback();
@@ -47,6 +71,7 @@ export default function TouchMainApp() {
   const [selectedDept, setSelectedDept] = useState<string>('');
   const [rating, setRating] = useState<number>(0);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagPage, setTagPage] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
 
   // Danh sách khoa hiển thị: lấy danh sách đầy đủ đảm bảo đủ các khoa thuộc 3 khối
@@ -239,6 +264,7 @@ export default function TouchMainApp() {
     setSelectedDept('');
     setRating(0);
     setSelectedTags([]);
+    setTagPage(0);
     setComment('');
     setPatientCard(null);
     setScanNotification(null);
@@ -279,6 +305,12 @@ export default function TouchMainApp() {
       userId: patientCard ? `card-${patientCard.cardNumber}` : `touch-${Date.now()}`,
       userName: authorName,
       isAnonymous: !patientCard,
+      hasCardVerified: Boolean(patientCard),
+      cardType: patientCard?.type,
+      cardNumber: patientCard?.cardNumber,
+      patientDob: patientCard?.dob,
+      patientGender: patientCard?.gender,
+      patientAddress: patientCard?.address,
       departmentId: selectedDept || displayDepartments[0]?.id || 'dept-1',
       departmentName: deptObj ? deptObj.name : 'Khoa Khám Bệnh',
       overallRating: rating,
@@ -582,7 +614,13 @@ export default function TouchMainApp() {
                   <button
                     key={star}
                     type="button"
-                    onClick={() => setRating(star)}
+                    onClick={() => {
+                      if (rating !== star) {
+                        setRating(star);
+                        setTagPage(0);
+                        setSelectedTags([]);
+                      }
+                    }}
                     className="p-1 sm:p-2 active:scale-90 transition-transform cursor-pointer focus:outline-none"
                     aria-label={`${star} sao`}
                   >
@@ -608,36 +646,93 @@ export default function TouchMainApp() {
               )}
             </div>
 
-            {/* Thẻ đánh giá nhanh - Thiết kế siêu gọn gàng, cân đối, chạm nhạy không tốn diện tích */}
-            <div className="space-y-2 max-w-xl mx-auto w-full">
-              <label className="block text-xs sm:text-sm font-bold text-white text-center drop-shadow-xs">
-                Chạm để chọn cảm nhận nhanh (chọn nhiều mục):
-              </label>
-              <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                {QUICK_TAGS.map((tag) => {
-                  const isChecked = selectedTags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleTag(tag)}
-                      className={`w-full min-h-[42px] sm:min-h-[46px] px-3 py-2 rounded-lg font-bold text-xs sm:text-[13px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border text-center select-none ${
-                        isChecked
-                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/40 scale-[1.01]'
-                          : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 hover:border-emerald-500'
-                      }`}
-                    >
-                      {isChecked ? (
-                        <Check className="w-3.5 h-3.5 text-white stroke-[3] shrink-0 animate-in zoom-in-75 duration-200" />
+            {/* Khối Thẻ Đánh Giá Động Theo Số Sao (Khen Ngợi hoặc Góp Ý / Chê) có Phân Trang */}
+            {(() => {
+              // Nếu 4 - 5 sao: Hiện thẻ khen ngợi. Nếu 1 - 3 sao: Hiện thẻ góp ý / phàn nàn. Mặc định là khen.
+              const isPositive = rating === 0 || rating >= 4;
+              const currentTagList = isPositive ? POSITIVE_TAGS : CRITICAL_TAGS;
+              const totalPages = Math.ceil(currentTagList.length / TAGS_PER_PAGE);
+              const safePage = Math.min(tagPage, totalPages - 1);
+              const startIdx = safePage * TAGS_PER_PAGE;
+              const displayedTags = currentTagList.slice(startIdx, startIdx + TAGS_PER_PAGE);
+
+              return (
+                <div className={`space-y-2.5 max-w-xl mx-auto w-full transition-all duration-300 ${
+                  rating === 0 
+                    ? 'opacity-35 pointer-events-none select-none filter blur-[0.4px]' 
+                    : 'opacity-100 pointer-events-auto animate-in fade-in duration-300'
+                }`}>
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white drop-shadow-xs">
+                      {rating === 0 ? (
+                        <span className="text-sky-200/80 font-normal italic">
+                          (Chọn số sao ở trên để mở khóa các tiêu chí đánh giá nhanh)
+                        </span>
+                      ) : isPositive ? (
+                        <span>Điểm bạn hài lòng nhất (chọn nhanh):</span>
                       ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
+                        <span>Vấn đề bệnh viện cần cải thiện (chọn nhanh):</span>
                       )}
-                      <span className="leading-tight truncate">{tag}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                    </div>
+
+                    {/* Phân trang (Trang 1/2) nếu danh sách nhiều mục */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-1.5 text-xs text-sky-200 font-semibold bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-xs">
+                        <span>Trang {safePage + 1}/{totalPages}</span>
+                        <div className="flex items-center gap-0.5 ml-1">
+                          <button
+                            type="button"
+                            disabled={safePage === 0}
+                            onClick={() => setTagPage(Math.max(0, safePage - 1))}
+                            className="p-1 rounded hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                            title="Trang trước"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={safePage >= totalPages - 1}
+                            onClick={() => setTagPage(Math.min(totalPages - 1, safePage + 1))}
+                            className="p-1 rounded hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                            title="Trang sau"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lưới các thẻ phản hồi theo trang */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                    {displayedTags.map((tag) => {
+                      const isChecked = selectedTags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleTag(tag)}
+                          className={`w-full min-h-[44px] sm:min-h-[48px] px-3 py-2 rounded-xl font-bold text-xs sm:text-[13px] transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer border text-center select-none ${
+                            isChecked
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/40 scale-[1.01]'
+                              : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90'
+                          }`}
+                        >
+                          {isChecked ? (
+                            <Check className="w-4 h-4 text-white stroke-[3] shrink-0 animate-in zoom-in-75 duration-200" />
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
+                          )}
+                          <span className="leading-tight truncate">{tag}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Đã bỏ 2 nút lớn phía dưới theo yêu cầu */}
+                </div>
+              );
+            })()}
 
           </div>
         )}
