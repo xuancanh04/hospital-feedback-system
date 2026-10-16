@@ -25,20 +25,58 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [doctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
 
-  // Chỉ đọc từ localStorage sau khi đã mount trên Client để tránh lệch Hydration SSR
   React.useEffect(() => {
-    try {
-      const savedDepts = localStorage.getItem('hospital_7a_departments_v4');
-      if (savedDepts) {
-        const parsed = JSON.parse(savedDepts);
-        if (Array.isArray(parsed) && parsed.length >= INITIAL_DEPARTMENTS.length) {
-          setDepartments(parsed);
+    // 1. Tải danh sách đánh giá từ API PostgreSQL
+    const fetchReviewsFromDB = async () => {
+      try {
+        const res = await fetch('/api/reviews');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setReviews(json.data);
+            return;
+          }
         }
+      } catch (e) {
+        console.warn('Chưa kết nối được API /api/reviews, fallback sang local:', e);
       }
 
-      const savedRevs = localStorage.getItem('hospital_7a_reviews');
-      if (savedRevs) setReviews(JSON.parse(savedRevs));
-    } catch {}
+      // Fallback nếu offline hoặc lỗi mạng
+      try {
+        const savedRevs = localStorage.getItem('hospital_7a_reviews');
+        if (savedRevs) setReviews(JSON.parse(savedRevs));
+      } catch {}
+    };
+
+    fetchReviewsFromDB();
+
+    // 2. Tải danh sách khoa phòng từ API PostgreSQL
+    const fetchDeptsFromDB = async () => {
+      try {
+        const res = await fetch('/api/departments');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setDepartments(json.data);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Chưa kết nối được API /api/departments, fallback:', e);
+      }
+
+      try {
+        const savedDepts = localStorage.getItem('hospital_7a_departments_v4');
+        if (savedDepts) {
+          const parsed = JSON.parse(savedDepts);
+          if (Array.isArray(parsed) && parsed.length >= INITIAL_DEPARTMENTS.length) {
+            setDepartments(parsed);
+          }
+        }
+      } catch {}
+    };
+
+    fetchDeptsFromDB();
   }, []);
 
   const saveReviewsLocal = (newList: Review[]) => {
@@ -52,9 +90,27 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addReview = async (newRevData: Omit<Review, 'id' | 'createdAt' | 'status' | 'likes'>) => {
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRevData),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          saveReviewsLocal([json.data, ...reviews]);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Gửi API thất bại, lưu tạm local:', err);
+    }
+
+    // Fallback nếu API lỗi
     const newId = `rev-${Date.now()}`;
     const createdAt = new Date().toISOString();
-
     const newReview: Review = {
       ...newRevData,
       id: newId,
@@ -62,7 +118,6 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
       status: 'approved',
       likes: 0,
     };
-
     saveReviewsLocal([newReview, ...reviews]);
   };
 
@@ -98,6 +153,23 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addDepartment = async (dept: Omit<Department, 'id' | 'averageRating' | 'totalReviews'>) => {
+    try {
+      const res = await fetch('/api/departments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dept),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          saveDepartmentsLocal([...departments, json.data]);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi gọi API addDepartment, lưu tạm local:', err);
+    }
+
     const newDept: Department = {
       ...dept,
       id: `dept-${Date.now()}`,
@@ -108,10 +180,26 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateDepartment = async (id: string, dept: Partial<Department>) => {
+    try {
+      await fetch('/api/departments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...dept }),
+      });
+    } catch (err) {
+      console.warn('Lỗi gọi API updateDepartment:', err);
+    }
     saveDepartmentsLocal(departments.map((d) => (d.id === id ? { ...d, ...dept } : d)));
   };
 
   const deleteDepartment = async (id: string) => {
+    try {
+      await fetch(`/api/departments?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.warn('Lỗi gọi API deleteDepartment:', err);
+    }
     saveDepartmentsLocal(departments.filter((d) => d.id !== id));
   };
 

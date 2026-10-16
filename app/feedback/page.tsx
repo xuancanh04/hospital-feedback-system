@@ -12,7 +12,8 @@ import {
   EyeOff, 
   CheckCircle, 
   AlertCircle,
-  Sparkles,
+  Star,
+  ClipboardCheck,
   Info
 } from 'lucide-react';
 
@@ -131,8 +132,8 @@ export default function FeedbackPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Title */}
       <div className="mb-8 text-center sm:text-left">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold text-xs mb-2">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold text-xs mb-2 border border-emerald-200/60">
+          <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600" />
           Phiếu Khảo Sát Ý Kiến Bệnh Nhân & Thân Nhân
         </div>
         <h1 className="text-3xl font-extrabold text-zinc-900 dark:text-zinc-100">
@@ -205,7 +206,7 @@ export default function FeedbackPage() {
         {/* Section 2: Chấm điểm tiêu chí */}
         <div className="space-y-5">
           <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100 border-b pb-2 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" />
+            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
             2. Chấm Điểm Đánh Giá
           </h3>
 

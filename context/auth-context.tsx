@@ -20,27 +20,36 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState<User[]>(() => {
-    if (typeof window === 'undefined') return MOCK_USERS;
-    try {
-      const savedUsers = localStorage.getItem('hospital_7a_all_users');
-      if (savedUsers) {
-        const parsed = JSON.parse(savedUsers);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Tự động thay thế avatar cũ nếu đang lưu trong localStorage
-          return parsed.map((u) => {
-            if (u.id === 'user-admin' && (!u.avatar || u.avatar.includes('photo-'))) {
-              return { ...u, avatar: '/admin-avatar-3d.jpg' };
-            }
-            return u;
-          });
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+
+  React.useEffect(() => {
+    const fetchUsersFromDB = async () => {
+      try {
+        const res = await fetch('/api/users');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setUsers(json.data);
+            return;
+          }
         }
+      } catch (e) {
+        console.warn('Chưa kết nối được API /api/users, fallback:', e);
       }
-    } catch {
-      // ignore
-    }
-    return MOCK_USERS;
-  });
+
+      try {
+        const savedUsers = localStorage.getItem('hospital_7a_all_users');
+        if (savedUsers) {
+          const parsed = JSON.parse(savedUsers);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setUsers(parsed);
+          }
+        }
+      } catch {}
+    };
+
+    fetchUsersFromDB();
+  }, []);
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -142,11 +151,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(updated);
     localStorage.setItem('hospital_7a_current_session', JSON.stringify(updated));
 
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentUser.id, ...data }),
+      });
+    } catch (e) {
+      console.warn('Lỗi API updateProfile:', e);
+    }
+
     const updatedList = users.map((u) => (u.id === currentUser.id ? { ...u, ...data } : u));
     saveUsersList(updatedList);
   };
 
   const createUserByAdmin = async (userData: Omit<User, 'id' | 'createdAt'>) => {
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          saveUsersList([...users, json.data]);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Lỗi API createUserByAdmin:', e);
+    }
+
     const newUser: User = {
       ...userData,
       id: `usr-${Date.now()}`,
@@ -160,12 +196,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteUserByAdmin = async (userId: string) => {
+    try {
+      await fetch(`/api/users?id=${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Lỗi API deleteUserByAdmin:', e);
+    }
     saveUsersList(users.filter((u) => u.id !== userId));
   };
 
   const toggleUserStatus = async (userId: string) => {
     const target = users.find((u) => u.id === userId);
     const newStatus = target?.status === 'suspended' ? 'active' : 'suspended';
+
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, status: newStatus }),
+      });
+    } catch (e) {
+      console.warn('Lỗi API toggleUserStatus:', e);
+    }
+
     saveUsersList(
       users.map((u) => (u.id === userId ? { ...u, status: newStatus } : u))
     );

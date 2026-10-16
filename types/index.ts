@@ -64,6 +64,15 @@ export interface Review {
   userName: string;
   userAvatar?: string;
   isAnonymous: boolean;
+  
+  // Thông tin quét thẻ xác thực (CCCD / BHYT) nếu có
+  cardType?: 'cccd' | 'bhyt';
+  cardNumber?: string;
+  patientDob?: string;
+  patientGender?: string;
+  patientAddress?: string;
+  hasCardVerified?: boolean;
+
   departmentId: string;
   departmentName: string;
   doctorId?: string;

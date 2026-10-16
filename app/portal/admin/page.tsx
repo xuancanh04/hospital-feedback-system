@@ -32,7 +32,6 @@ import {
   Search,
   Filter,
   Clock,
-  Sparkles,
   Menu,
   X,
   ChevronRight,
@@ -65,7 +64,6 @@ export default function AdminPortalPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Form states for adding/editing department
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
   const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
   const [deptFormName, setDeptFormName] = useState('');
@@ -76,7 +74,6 @@ export default function AdminPortalPage() {
   const [deptSearch, setDeptSearch] = useState('');
   const [deptFilterCategory, setDeptFilterCategory] = useState<'all' | 'noi' | 'ngoai' | 'canlamsang'>('all');
 
-  // Modal thêm tài khoản quản trị
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [adminName, setAdminName] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -84,15 +81,12 @@ export default function AdminPortalPage() {
   const [adminTitle, setAdminTitle] = useState('');
   const [adminPhone, setAdminPhone] = useState('');
 
-  // Admin user list search & filter (chỉ quản trị viên)
   const [userSearch, setUserSearch] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
 
-  // Side drawer delete confirmation state
   const [deletingDept, setDeletingDept] = useState<(typeof departments)[0] | null>(null);
   const [deletingUser, setDeletingUser] = useState<(typeof users)[0] | null>(null);
 
-  // Helper to determine department category
   const getDeptCategory = (d: { category?: string; name: string; code?: string }): 'noi' | 'ngoai' | 'canlamsang' => {
     if (d.category === 'noi' || d.category === 'ngoai' || d.category === 'canlamsang') return d.category;
     const name = (d.name || '').toLowerCase();
@@ -111,7 +105,6 @@ export default function AdminPortalPage() {
     return 'noi';
   };
 
-  // Analytics Computations
   const totalReviews = reviews.length;
   const pendingReviews = reviews.filter((r) => r.status === 'pending');
   const approvedReviews = reviews.filter((r) => r.status === 'approved');
@@ -125,7 +118,6 @@ export default function AdminPortalPage() {
     (reviews.filter((r) => r.overallRating >= 4).length / (totalReviews || 1)) * 100
   );
 
-  // Chart data: Distribution by Rating (1 - 5 stars)
   const ratingDistributionData = [
     { name: '5 Sao', count: reviews.filter((r) => r.overallRating === 5).length, fill: '#10b981' },
     { name: '4 Sao', count: reviews.filter((r) => r.overallRating === 4).length, fill: '#3b82f6' },
@@ -134,7 +126,6 @@ export default function AdminPortalPage() {
     { name: '1 Sao', count: reviews.filter((r) => r.overallRating === 1).length, fill: '#ef4444' },
   ];
 
-  // Chart data: Monthly satisfaction trend
   const trendData = [
     { month: 'T11/2025', csat: 91, reviews: 45 },
     { month: 'T12/2025', csat: 93, reviews: 52 },
@@ -144,7 +135,6 @@ export default function AdminPortalPage() {
     { month: 'T04/2026', csat: csat, reviews: totalReviews },
   ];
 
-  // Department ranking data with sorting
   const deptPerformanceData = useMemo(() => {
     return departments.map((d) => {
       const deptRev = reviews.filter((r) => r.departmentId === d.id);
@@ -165,7 +155,6 @@ export default function AdminPortalPage() {
     }).sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
   }, [departments, reviews]);
 
-  // Filtered departments
   const filteredDepartments = useMemo(() => {
     return departments.filter((d) => {
       const matchCat = deptFilterCategory === 'all' || getDeptCategory(d) === deptFilterCategory;
@@ -175,7 +164,6 @@ export default function AdminPortalPage() {
     });
   }, [departments, deptFilterCategory, deptSearch]);
 
-  // Chỉ lọc tài khoản có vai trò Quản Trị Viên (Admin)
   const filteredUsers = useMemo(() => {
     return users
       .filter((u) => u.role === 'admin')
@@ -278,11 +266,7 @@ export default function AdminPortalPage() {
   return (
     <ProtectedRoute allowedRoles={['admin']}>
       <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 flex flex-col lg:flex-row">
-        
-        {/* =========================================================================
-            THANH MENU BÊN TRÁI (CLEAN WHITE SIDEBAR - BỆNH VIỆN QUÂN Y 7A)
-        ========================================================================= */}
-        {/* Nút bấm mở Menu trên màn hình đứng (Mobile & Tablet Portrait) */}
+
         <div className="lg:hidden sticky top-0 z-30 bg-white dark:bg-zinc-900 text-slate-800 dark:text-white px-4 py-3 flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 shadow-xs">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600">
@@ -296,14 +280,14 @@ export default function AdminPortalPage() {
           <button
             type="button"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center"
+            title={sidebarOpen ? 'Đóng menu' : 'Mở menu'}
+            aria-label={sidebarOpen ? 'Đóng menu' : 'Mở menu'}
           >
-            {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            <span>{sidebarOpen ? 'Đóng Menu' : 'Menu'}</span>
+            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
-        {/* Backdrop che mờ khi mở Menu trên màn hình đứng */}
         {sidebarOpen && (
           <div 
             onClick={() => setSidebarOpen(false)}
@@ -311,7 +295,6 @@ export default function AdminPortalPage() {
           />
         )}
 
-        {/* Sidebar Container: Hỗ trợ cả Drawer di động và Nút Thu Gọn (Collapsible) trên Desktop */}
         <aside
           className={`${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
@@ -320,14 +303,14 @@ export default function AdminPortalPage() {
           } fixed inset-y-0 left-0 z-30 lg:static lg:z-20 w-72 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 shrink-0 border-r border-slate-200 dark:border-zinc-800 p-3 sm:p-4 flex flex-col justify-between shadow-xl lg:shadow-xs transition-all duration-300 ease-in-out`}
         >
           <div className="space-y-4">
-            {/* Header Nút Thu Gọn Desktop & Tiêu đề danh mục */}
+            
             <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-slate-100 dark:border-zinc-800">
               {!isCollapsed && (
                 <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider truncate">
                   Hạng Mục Quản Lý
                 </div>
               )}
-              {/* Nút Thu gọn / Mở rộng Sidebar */}
+              
               <button
                 type="button"
                 onClick={() => setIsCollapsed(!isCollapsed)}
@@ -344,9 +327,8 @@ export default function AdminPortalPage() {
               </button>
             </div>
 
-            {/* Danh Mục Điều Hành */}
             <div className="space-y-1.5">
-              {/* 1. Thống Kê & Báo Cáo */}
+              
               <button
                 type="button"
                 onClick={() => {
@@ -371,7 +353,6 @@ export default function AdminPortalPage() {
                 )}
               </button>
 
-              {/* 2. Quản Lý Khoa Phòng */}
               <button
                 type="button"
                 onClick={() => {
@@ -398,7 +379,6 @@ export default function AdminPortalPage() {
                 )}
               </button>
 
-              {/* 3. Tài Khoản Quản Trị */}
               <button
                 type="button"
                 onClick={() => {
@@ -427,7 +407,6 @@ export default function AdminPortalPage() {
             </div>
           </div>
 
-          {/* Nút thu gọn nhanh ở chân Sidebar */}
           <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 hidden lg:block">
             <button
               type="button"
@@ -451,11 +430,8 @@ export default function AdminPortalPage() {
           </div>
         </aside>
 
-        {/* =========================================================================
-            VÙNG NỘI DUNG CHÍNH (CONTENT AREA)
-        ========================================================================= */}
         <div className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 overflow-y-auto">
-          {/* Header Title Bar nhỏ gọn phía trên nội dung */}
+          
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-zinc-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <h1 className="text-lg sm:text-xl md:text-2xl font-black text-[#000080] dark:text-white tracking-tight uppercase">
@@ -469,19 +445,15 @@ export default function AdminPortalPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-bold border border-emerald-200/80">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>CSAT Toàn Viện: {avgRating}/5.0</span>
+              <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-semibold border border-emerald-200/80">
+                CSAT Toàn Viện: <strong className="ml-1 font-bold">{avgRating}</strong>/5.0
               </span>
             </div>
           </div>
 
-        {/* =========================================================================
-            TAB 1: THỐNG KÊ & BÁO CÁO (ANALYTICS)
-        ========================================================================= */}
         {activeTab === 'analytics' && (
           <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
-            {/* HÀNG KPI: 2 CỘT TRÊN MOBILE NHỎ, 4 CỘT TRÊN MÀN HÌNH LỚN */}
+            
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4.5">
               <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
                 <div>
@@ -520,9 +492,8 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* HÀNG BIỂU ĐỒ TRỰC QUAN (CO GIÃN TỐT TRÊN MỌI MÀN HÌNH) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {/* Biểu đồ 1: Xu hướng CSAT */}
+              
               <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
@@ -544,7 +515,6 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              {/* Biểu đồ 2: Cơ cấu số sao */}
               <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
@@ -570,7 +540,6 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* BẢNG XẾP HẠNG CHẤT LƯỢNG KHOA PHÒNG HIỆN ĐẠI */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
               <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-900/50">
                 <div>
@@ -588,7 +557,56 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="md:hidden divide-y divide-slate-100 dark:divide-zinc-800">
+                {deptPerformanceData.map((d, idx) => (
+                  <div key={d.id} className="p-3.5 space-y-2 hover:bg-slate-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {idx === 0 ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 font-extrabold text-xs">1</span>
+                        ) : idx === 1 ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-slate-700 font-extrabold text-xs">2</span>
+                        ) : idx === 2 ? (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-700 font-extrabold text-xs">3</span>
+                        ) : (
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-500 font-bold text-xs">#{idx + 1}</span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700">
+                          {d.code}
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-zinc-100 text-sm">
+                          {d.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200/60 text-xs shrink-0">
+                        ★ {d.rating.toFixed(1)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <div>
+                        {getCategoryBadge(d.category)}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-[11px] font-medium">
+                          {d.reviews} lượt
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                          d.rating >= 4.8 
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60' 
+                            : d.rating >= 4.5 
+                            ? 'bg-teal-100 text-teal-800 border border-teal-200/60' 
+                            : 'bg-amber-100 text-amber-800 border border-amber-200/60'
+                        }`}>
+                          {d.rating >= 4.8 ? 'Xuất sắc' : d.rating >= 4.5 ? 'Tốt' : 'Đạt chuẩn'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm min-w-[700px]">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-zinc-800">
@@ -662,12 +680,9 @@ export default function AdminPortalPage() {
           </div>
         )}
 
-        {/* =========================================================================
-            TAB 2: QUẢN LÝ KHOA PHÒNG (DEPARTMENTS)
-        ========================================================================= */}
         {activeTab === 'departments' && (
           <div className="space-y-5 animate-in fade-in duration-200">
-            {/* THANH ĐIỀU HƯỚNG & CÔNG CỤ BẢNG KHOA PHÒNG */}
+            
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 p-4 sm:p-5 shadow-xs space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -681,7 +696,7 @@ export default function AdminPortalPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Nút thêm khoa phòng */}
+                  
                   <button
                     type="button"
                     onClick={openAddDeptModal}
@@ -693,9 +708,8 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              {/* HÀNG BỘ LỌC VÀ TÌM KIẾM */}
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-zinc-800">
-                {/* Nhóm nút lọc theo khối */}
+                
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
                   {[
                     { id: 'all', label: `Tất Cả (${departments.length})` },
@@ -718,7 +732,6 @@ export default function AdminPortalPage() {
                   ))}
                 </div>
 
-                {/* Thanh tìm kiếm */}
                 <div className="relative w-full md:w-72 shrink-0">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -732,9 +745,75 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* BẢNG CHI TIẾT KHOA PHÒNG (TABLE VIEW) */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
-              <div className="overflow-x-auto">
+              
+              <div className="md:hidden divide-y divide-slate-100 dark:divide-zinc-800">
+                {filteredDepartments.length === 0 ? (
+                  <div className="py-10 text-center text-slate-400 text-xs px-4">
+                    Không tìm thấy khoa phòng nào phù hợp với điều kiện tìm kiếm.
+                  </div>
+                ) : (
+                  filteredDepartments.map((dept) => {
+                    const cat = getDeptCategory(dept);
+                    return (
+                      <div key={dept.id} className="p-3.5 space-y-2.5 hover:bg-slate-50/60 dark:hover:bg-zinc-800/30 transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md font-mono text-[11px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-zinc-700">
+                              {dept.code}
+                            </span>
+                            <span className="font-bold text-slate-900 dark:text-zinc-100 text-sm">
+                              {dept.name}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => openEditDeptModal(dept)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-zinc-800 transition"
+                              title="Chỉnh sửa"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingDept(dept)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-zinc-800 transition"
+                              title="Xóa"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {dept.note && (
+                          <div className="text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-950/30 px-2 py-1 rounded-md">
+                            {dept.note}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+                          <div>
+                            {getCategoryBadge(cat)}
+                          </div>
+                          <div className="flex items-center gap-1.5 font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200/60">
+                            ★ {dept.averageRating || '4.8'}
+                          </div>
+                        </div>
+
+                        {dept.description && (
+                          <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                            {dept.description}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm min-w-[720px]">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-zinc-800">
@@ -818,12 +897,9 @@ export default function AdminPortalPage() {
           </div>
         )}
 
-        {/* =========================================================================
-            TAB 3: TÀI KHOẢN QUẢN TRỊ VIÊN (ADMINS ONLY)
-        ========================================================================= */}
         {activeTab === 'users' && (
           <div className="space-y-5 animate-in fade-in duration-200">
-            {/* KHỐI TỔNG QUAN QUẢN TRỊ VIÊN */}
+            
             <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-emerald-50 dark:from-purple-950/20 dark:to-zinc-900 p-4 sm:p-5 rounded-2xl border border-purple-200/80 dark:border-purple-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-sm text-slate-900 dark:text-purple-200 flex items-center gap-2">
@@ -849,9 +925,8 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* BẢNG TÀI KHOẢN ADMIN HIỆN ĐẠI KÈM BỘ LỌC */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
-              {/* TOOLBAR TÌM KIẾM & BỘ LỌC */}
+              
               <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-900/50">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
@@ -884,7 +959,6 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              {/* BẢNG HIỂN THỊ TÀI KHOẢN ADMIN */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm min-w-[650px]">
                   <thead>
@@ -989,18 +1063,16 @@ export default function AdminPortalPage() {
         </div>
       </div>
 
-      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): THÊM / SỬA KHOA PHÒNG */}
       {showAddDeptModal && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop mờ phía sau */}
+          
           <div 
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
             onClick={() => setShowAddDeptModal(false)}
           />
 
-          {/* Drawer trượt từ bên phải */}
           <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full shadow-2xl flex flex-col z-10 border-l border-slate-200 dark:border-zinc-800 animate-in slide-in-from-right duration-300">
-            {/* Header Drawer */}
+            
             <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-900/70">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 flex items-center justify-center">
@@ -1025,7 +1097,6 @@ export default function AdminPortalPage() {
               </button>
             </div>
 
-            {/* Form Body - Có scroll nếu nội dung dài */}
             <form onSubmit={handleSaveDept} className="flex-1 overflow-y-auto p-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
@@ -1087,7 +1158,6 @@ export default function AdminPortalPage() {
                 <p>Mã khoa và tên khoa sau khi lưu sẽ lập tức đồng bộ sang Kiosk và trang khảo sát bệnh nhân trực tuyến.</p>
               </div>
 
-              {/* Drawer Footer Actions */}
               <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-6">
                 <button
                   type="button"
@@ -1108,18 +1178,16 @@ export default function AdminPortalPage() {
         </div>
       )}
 
-      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): THÊM QUẢN TRỊ VIÊN */}
       {showAddAdminModal && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop mờ phía sau */}
+          
           <div 
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity animate-in fade-in duration-300"
             onClick={() => setShowAddAdminModal(false)}
           />
 
-          {/* Drawer trượt từ bên phải */}
           <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 h-full shadow-2xl flex flex-col z-10 border-l border-slate-200 dark:border-zinc-800 animate-in slide-in-from-right duration-300">
-            {/* Header Drawer */}
+            
             <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-900/70">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 flex items-center justify-center">
@@ -1144,7 +1212,6 @@ export default function AdminPortalPage() {
               </button>
             </div>
 
-            {/* Form Body */}
             <form onSubmit={handleCreateAdmin} className="flex-1 overflow-y-auto p-5 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-zinc-300 mb-1">
@@ -1216,7 +1283,6 @@ export default function AdminPortalPage() {
                 <p>Tài khoản có quyền giám sát toàn bộ báo cáo phân tích, theo dõi đánh giá của bệnh nhân, và quản lý danh mục phòng ban.</p>
               </div>
 
-              {/* Drawer Footer Actions */}
               <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-6">
                 <button
                   type="button"
@@ -1237,7 +1303,6 @@ export default function AdminPortalPage() {
         </div>
       )}
 
-      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): XÁC NHẬN XÓA KHOA PHÒNG */}
       {deletingDept && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div 
@@ -1317,7 +1382,6 @@ export default function AdminPortalPage() {
         </div>
       )}
 
-      {/* SLIDE-OVER DRAWER (XỔ TỪ BÊN PHẢI SANG): XÁC NHẬN XÓA TÀI KHOẢN ADMIN */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div 
