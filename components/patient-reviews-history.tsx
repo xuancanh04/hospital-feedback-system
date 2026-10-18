@@ -193,13 +193,374 @@ export function PatientReviewsHistory({
     document.body.removeChild(link);
   };
 
+  // Hàm in CHỈ RIÊNG BẢNG DANH SÁCH (Không dính màn hình trang web, không dính sidebar/header)
+  const handlePrintTable = () => {
+    const printWindow = window.open('', '_blank', 'width=1100,height=800');
+    if (!printWindow) {
+      alert('Vui lòng cho phép mở popup để in danh sách.');
+      return;
+    }
+
+    const tableRowsHtml = filteredReviews.map((r, idx) => {
+      const parsed = parseContent(r.content || '');
+      const isVerified = r.hasCardVerified || (!r.isAnonymous && r.cardNumber);
+      
+      // Định dạng thẻ tiêu chí ngắn gọn trên 1 dòng
+      let criteriaDisplay = '';
+      if (parsed.tags.length > 0) {
+        criteriaDisplay += `<span style="display: inline-block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 4px; margin-right: 4px;">✓ ${parsed.tags[0]}</span>`;
+        if (parsed.tags.length > 1) {
+          criteriaDisplay += `<span style="display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; font-size: 9px; font-weight: bold; padding: 1px 4px; border-radius: 3px; margin-right: 4px;">+${parsed.tags.length - 1} tiêu chí</span>`;
+        }
+      }
+      if (parsed.comment) {
+        criteriaDisplay += `<span style="font-size: 10px; font-style: italic; color: #334155;">"${parsed.comment}"</span>`;
+      }
+      if (!criteriaDisplay) {
+        criteriaDisplay = '<span style="color: #94a3b8; font-size: 10px; font-style: italic;">-</span>';
+      }
+
+      return `
+        <tr>
+          <td style="text-align: center; font-weight: bold; color: #64748b;">${idx + 1}</td>
+          <td>
+            <strong style="color: #0f172a;">${r.userName || 'Bệnh nhân'}</strong>
+            <div style="font-size: 9px; color: #64748b; font-family: monospace;">${r.id}</div>
+          </td>
+          <td style="white-space: nowrap;">
+            ${isVerified 
+              ? `<span style="font-weight: bold; color: #047857; font-size: 10px;">[${(r.cardType || 'CCCD').toUpperCase()}]</span> <span style="font-family: monospace; font-size: 10px;">${r.cardNumber || ''}</span>` 
+              : '<span style="color: #64748b; font-size: 10px;">Ẩn danh</span>'
+            }
+          </td>
+          <td><strong style="color: #1e293b;">${r.departmentName}</strong></td>
+          <td style="text-align: center; font-weight: 900; color: #047857; white-space: nowrap;">★ ${r.overallRating}.0</td>
+          <td style="text-align: center; font-weight: bold; color: #059669;">★ ${r.criteria?.serviceAttitude || r.overallRating}</td>
+          <td style="text-align: center; font-weight: bold; color: #2563eb;">★ ${r.criteria?.facilities || r.overallRating}</td>
+          <td style="text-align: center; font-weight: bold; color: #d97706;">★ ${r.criteria?.waitTime || r.overallRating}</td>
+          <td style="text-align: center; font-weight: bold; color: #7c3aed;">★ ${r.criteria?.costTransparency || r.overallRating}</td>
+          <td style="line-height: 1.3;">${criteriaDisplay}</td>
+          <td style="text-align: center; white-space: nowrap; font-size: 10px; color: #475569;">
+            ${new Date(r.createdAt || r.visitDate).toLocaleDateString('vi-VN')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Bảng Tổng Hợp Lịch Sử Đánh Giá Bệnh Nhân - BV Quân Y 7A</title>
+          <style>
+            @page {
+              size: A4 landscape;
+              margin: 10mm 8mm;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              color: #0f172a;
+              margin: 0;
+              padding: 5px;
+              font-size: 10.5px;
+              line-height: 1.35;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              border-bottom: 2px solid #0f766e;
+              padding-bottom: 6px;
+              margin-bottom: 10px;
+            }
+            .header-left .unit-sub {
+              font-size: 11px;
+              font-weight: bold;
+              text-transform: uppercase;
+              color: #475569;
+            }
+            .header-left .unit-main {
+              font-size: 14px;
+              font-weight: 900;
+              text-transform: uppercase;
+              color: #047857;
+            }
+            .header-right {
+              text-align: right;
+              font-size: 11px;
+              color: #475569;
+            }
+            .title {
+              text-align: center;
+              font-size: 15px;
+              font-weight: 900;
+              text-transform: uppercase;
+              color: #0f172a;
+              margin: 8px 0 12px 0;
+              letter-spacing: 0.5px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+            }
+            th, td {
+              border: 1px solid #cbd5e1;
+              padding: 5px 6px;
+              vertical-align: middle;
+              word-wrap: break-word;
+            }
+            th {
+              background-color: #f1f5f9;
+              font-weight: bold;
+              text-transform: uppercase;
+              font-size: 10px;
+              letter-spacing: 0.3px;
+              color: #1e293b;
+              text-align: center;
+            }
+            tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+            .footer {
+              margin-top: 12px;
+              display: flex;
+              justify-content: space-between;
+              font-size: 10px;
+              font-style: italic;
+              color: #64748b;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="header-left">
+              <div class="unit-sub">CỤC HẬU CẦN QUÂN KHU 7</div>
+              <div class="unit-main">BỆNH VIỆN QUÂN Y 7A</div>
+            </div>
+            <div class="header-right">
+              <div>Thời gian in: <strong>${new Date().toLocaleString('vi-VN')}</strong></div>
+              <div>Số lượng bản ghi: <strong>${filteredReviews.length} lượt</strong></div>
+            </div>
+          </div>
+
+          <div class="title">BẢNG TỔNG HỢP LỊCH SỬ ĐÁNH GIÁ & KHẢO SÁT HÀI LÒNG BỆNH NHÂN</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 32px;">STT</th>
+                <th style="width: 115px; text-align: left;">Người Bệnh</th>
+                <th style="width: 120px; text-align: left;">Định Danh / Thẻ</th>
+                <th style="width: 140px; text-align: left;">Khoa Phòng</th>
+                <th style="width: 60px;">Tổng</th>
+                <th style="width: 48px;">T.Độ</th>
+                <th style="width: 48px;">C.Sở</th>
+                <th style="width: 48px;">Chờ</th>
+                <th style="width: 48px;">V.Phí</th>
+                <th style="text-align: left;">Tiêu Chí & Lời Nhắn</th>
+                <th style="width: 75px;">Ngày</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRowsHtml}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <div>Hệ thống Kiosk & Khảo sát sự hài lòng người bệnh - Bệnh viện Quân y 7A</div>
+            <div>Trang 1 / 1</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.focus();
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  // Hàm in CHỈ RIÊNG 1 PHIẾU BỆNH NHÂN ĐANG XEM
+  const handlePrintSingleReview = (r: Review) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    if (!printWindow) {
+      alert('Vui lòng cho phép mở popup để in phiếu.');
+      return;
+    }
+
+    const parsed = parseContent(r.content || '');
+    const isVerified = r.hasCardVerified || (!r.isAnonymous && r.cardNumber);
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Phiếu Đánh Giá Bệnh Nhân - ${r.id}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 15mm;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+              color: #0f172a;
+              margin: 0;
+              padding: 10px;
+              font-size: 13px;
+              line-height: 1.6;
+            }
+            .header {
+              display: flex;
+              justify-content: space-between;
+              border-bottom: 2px solid #0f766e;
+              padding-bottom: 10px;
+              margin-bottom: 15px;
+            }
+            .title {
+              text-align: center;
+              font-size: 17px;
+              font-weight: 900;
+              text-transform: uppercase;
+              color: #047857;
+              margin: 15px 0;
+            }
+            .card {
+              border: 1px solid #cbd5e1;
+              border-radius: 8px;
+              padding: 12px 16px;
+              margin-bottom: 14px;
+            }
+            .card-title {
+              font-weight: bold;
+              text-transform: uppercase;
+              font-size: 12px;
+              color: #0f766e;
+              border-bottom: 1px solid #e2e8f0;
+              padding-bottom: 6px;
+              margin-bottom: 10px;
+            }
+            .row {
+              display: flex;
+              margin-bottom: 6px;
+            }
+            .col-label {
+              width: 180px;
+              color: #64748b;
+              font-size: 12px;
+            }
+            .col-value {
+              font-weight: 600;
+              color: #0f172a;
+            }
+            .grid-criteria {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 8px;
+              margin-top: 8px;
+            }
+            .criteria-item {
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+              padding: 8px 12px;
+              display: flex;
+              justify-content: space-between;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div style="font-weight: bold; font-size: 12px;">CỤC HẬU CẦN QUÂN KHU 7</div>
+              <div style="font-weight: 900; font-size: 15px; color: #047857;">BỆNH VIỆN QUÂN Y 7A</div>
+            </div>
+            <div style="text-align: right; font-size: 12px; color: #64748b;">
+              <div>Mã phiếu: <strong>${r.id}</strong></div>
+              <div>Ngày: ${new Date(r.createdAt || r.visitDate).toLocaleString('vi-VN')}</div>
+            </div>
+          </div>
+
+          <div class="title">PHIẾU KHẢO SÁT Ý KIẾN BỆNH NHÂN</div>
+
+          <div class="card">
+            <div class="card-title">1. Thông Tin Người Bệnh</div>
+            <div class="row"><div class="col-label">Họ và tên:</div><div class="col-value">${r.userName || 'Bệnh nhân ẩn danh'}</div></div>
+            <div class="row"><div class="col-label">Định danh thẻ:</div><div class="col-value">${isVerified ? `[${(r.cardType || 'CCCD').toUpperCase()}] ${r.cardNumber || ''}` : 'Khảo sát ẩn danh'}</div></div>
+            ${r.patientDob ? `<div class="row"><div class="col-label">Ngày sinh:</div><div class="col-value">${r.patientDob}</div></div>` : ''}
+            ${r.patientGender ? `<div class="row"><div class="col-label">Giới tính:</div><div class="col-value">${r.patientGender}</div></div>` : ''}
+            ${r.patientAddress ? `<div class="row"><div class="col-label">Địa chỉ:</div><div class="col-value">${r.patientAddress}</div></div>` : ''}
+          </div>
+
+          <div class="card">
+            <div class="card-title">2. Đánh Giá Khoa Phòng & 4 Trụ Cột (Bộ Y Tế)</div>
+            <div class="row"><div class="col-label">Khoa phòng tiếp nhận:</div><div class="col-value" style="font-size: 14px; color: #047857;">${r.departmentName}</div></div>
+            <div class="row"><div class="col-label">Điểm đánh giá tổng thể:</div><div class="col-value" style="font-size: 16px; color: #d97706;">★ ${r.overallRating}.0 / 5.0</div></div>
+
+            <div class="grid-criteria">
+              <div class="criteria-item"><span>1. Thái độ phục vụ:</span><strong style="color: #059669;">★ ${r.criteria?.serviceAttitude || r.overallRating}</strong></div>
+              <div class="criteria-item"><span>2. Cơ sở vật chất:</span><strong style="color: #2563eb;">★ ${r.criteria?.facilities || r.overallRating}</strong></div>
+              <div class="criteria-item"><span>3. Thời gian chờ đợi:</span><strong style="color: #d97706;">★ ${r.criteria?.waitTime || r.overallRating}</strong></div>
+              <div class="criteria-item"><span>4. Minh bạch viện phí:</span><strong style="color: #7c3aed;">★ ${r.criteria?.costTransparency || r.overallRating}</strong></div>
+            </div>
+
+            ${parsed.tags.length > 0 ? `
+              <div style="margin-top: 12px;">
+                <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">Tiêu chí nhanh đã chọn:</div>
+                <div>${parsed.tags.map(t => `<span style="display: inline-block; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-right: 4px; margin-bottom: 4px;">✓ ${t}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+
+            ${parsed.comment ? `
+              <div style="margin-top: 12px;">
+                <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">Ý kiến góp ý thêm:</div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; font-style: italic;">
+                  "${parsed.comment}"
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div style="margin-top: 30px; display: flex; justify-content: space-around; text-align: center;">
+            <div>
+              <div style="font-weight: bold;">NGƯỜI LẬP PHIẾU</div>
+              <div style="font-size: 11px; color: #64748b; font-style: italic;">(Ký, ghi rõ họ tên)</div>
+            </div>
+            <div>
+              <div style="font-weight: bold;">XÁC NHẬN BAN GIÁM ĐỐC</div>
+              <div style="font-size: 11px; color: #64748b; font-style: italic;">(Ký, đóng dấu)</div>
+            </div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.focus();
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
       
       {/* ---------------------------------------------------------------------
-          THANH TÌM KIẾM, BỘ LỌC & NÚT XUẤT DỮ LIỆU
+          THANH TÌM KIẾM, BỘ LỌC & NÚT XUẤT DỮ LIỆU (Ẩn khi in ấn)
       --------------------------------------------------------------------- */}
-      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs space-y-4">
+      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs space-y-4 print:hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
           <div>
             <div className="flex items-center gap-2">
@@ -226,7 +587,7 @@ export function PatientReviewsHistory({
             </button>
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={handlePrintTable}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold border border-slate-200 dark:border-zinc-700 cursor-pointer transition active:scale-95"
             >
               <Printer className="w-4 h-4" />
@@ -364,258 +725,370 @@ export function PatientReviewsHistory({
           </div>
         </div>
 
-        {/* Chế độ xem Mobile (Card view) */}
-        <div className="lg:hidden divide-y divide-slate-100 dark:divide-zinc-800">
-          {pagedReviews.map((r) => {
-            const parsed = parseContent(r.content || '');
-            const isVerified = r.hasCardVerified || (!r.isAnonymous && r.cardNumber);
-            return (
-              <div
-                key={r.id}
-                onClick={() => setSelectedPatientReview(r)}
-                className="p-4 space-y-2.5 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition cursor-pointer"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-teal-700 text-white font-bold flex items-center justify-center text-xs shrink-0">
-                      {r.userName?.charAt(0)?.toUpperCase() || 'P'}
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-zinc-100 text-sm">
-                        {r.userName || 'Bệnh nhân'}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        {r.id} • {new Date(r.createdAt || r.visitDate).toLocaleDateString('vi-VN')}
-                      </div>
-                    </div>
-                  </div>
-
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-black text-xs ${
-                    r.overallRating >= 4
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                      : r.overallRating === 3
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                      : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                  }`}>
-                    <Star className="w-3.5 h-3.5 fill-current" />
-                    <span>{r.overallRating}.0</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-semibold text-teal-700 dark:text-teal-400">
-                    Khoa: {r.departmentName}
-                  </span>
-                  <span>•</span>
-                  {isVerified ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>{r.cardType?.toUpperCase()}: {r.cardNumber || 'Đã xác thực'}</span>
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-slate-400">Ẩn danh</span>
-                  )}
-                </div>
-
-                {parsed.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {parsed.tags.map((t) => (
-                      <span key={t} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-[10px] text-slate-700 dark:text-zinc-300 font-medium">
-                        ✓ {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {parsed.comment && (
-                  <p className="text-xs text-slate-600 dark:text-zinc-400 line-clamp-2 italic">
-                    &ldquo;{parsed.comment}&rdquo;
-                  </p>
-                )}
-
-                <div className="pt-1 flex justify-end">
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-teal-600 dark:text-teal-400">
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>Xem chi tiết bệnh nhân</span>
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+        {/* Tiêu đề trang trọng khi in ra giấy A4 */}
+        <div className="hidden print:block p-4 border-b border-slate-300 mb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[12px] font-bold uppercase tracking-wider text-slate-700">CỤC HẬU CẦN QUÂN KHU 7</div>
+              <div className="text-[14px] font-black uppercase text-slate-900">BỆNH VIỆN QUÂN Y 7A</div>
+            </div>
+            <div className="text-right text-[11px] text-slate-600">
+              <div>Ngày in báo cáo: {new Date().toLocaleDateString('vi-VN')}</div>
+              <div className="font-bold text-slate-900">Tổng số lượt: {filteredReviews.length} lượt</div>
+            </div>
+          </div>
+          <h2 className="text-center text-lg font-black uppercase text-slate-900 mt-3 tracking-wide">
+            BẢNG TỔNG HỢP LỊCH SỬ ĐÁNH GIÁ & KHẢO SÁT HÀI LÒNG BỆNH NHÂN
+          </h2>
         </div>
 
-        {/* Chế độ xem Desktop (Bảng đầy đủ) */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[950px]">
-            <thead>
-              <tr className="bg-slate-50/80 dark:bg-zinc-800/50 text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-zinc-800">
-                <th className="py-3 px-3 w-10 text-center">STT</th>
-                <th className="py-3 px-3">Người Bệnh</th>
-                <th className="py-3 px-3">Định Danh / Thẻ</th>
-                <th className="py-3 px-3">Khoa Phòng Tiếp Nhận</th>
-                <th className="py-3 px-3 text-center">Đánh Giá</th>
-                <th className="py-3 px-3 text-center">Thái Độ</th>
-                <th className="py-3 px-3 text-center">Cơ Sở</th>
-                <th className="py-3 px-3 text-center">Chờ Đợi</th>
-                <th className="py-3 px-3 text-center">Viện Phí</th>
-                <th className="py-3 px-4">Tiêu Chí & Lời Nhắn</th>
-                <th className="py-3 px-3 text-center">Ngày Khảo Sát</th>
-                <th className="py-3 px-3 text-center w-24">Chi Tiết</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-              {pagedReviews.map((r, idx) => {
-                const parsed = parseContent(r.content || '');
-                const isVerified = r.hasCardVerified || (!r.isAnonymous && r.cardNumber);
-                return (
-                  <tr
-                    key={r.id}
-                    onClick={() => setSelectedPatientReview(r)}
-                    className="hover:bg-teal-50/40 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer group"
-                  >
-                    <td className="py-3 px-3 text-center font-bold text-slate-400 text-[11px]">
-                      {(safeCurrentPage - 1) * ITEMS_PER_PAGE + idx + 1}
-                    </td>
+        {/* Chế độ xem Mobile (Card view) - ẨN KHI IN ĐỂ KHÔNG IN THẺ MOBILE */}
+        <div className="lg:hidden print:hidden p-3.5 space-y-3 bg-slate-50/60 dark:bg-zinc-950/40">
+          {pagedReviews.length === 0 ? (
+            <div className="text-center py-12 px-4 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800">
+              <History className="w-10 h-10 mx-auto text-slate-300 dark:text-zinc-600 mb-2" />
+              <p className="font-bold text-slate-600 dark:text-zinc-400 text-sm">Không tìm thấy lượt đánh giá nào</p>
+              <p className="text-xs text-slate-400 mt-0.5">Vui lòng thử đổi bộ lọc hoặc từ khóa tìm kiếm</p>
+            </div>
+          ) : (
+            pagedReviews.map((r, idx) => {
+              const parsed = parseContent(r.content || '');
+              const isVerified = r.hasCardVerified || (!r.isAnonymous && r.cardNumber);
+              const seq = (safeCurrentPage - 1) * ITEMS_PER_PAGE + idx + 1;
 
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-teal-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
+              return (
+                <div
+                  key={r.id}
+                  onClick={() => setSelectedPatientReview(r)}
+                  className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-slate-200/90 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all active:scale-[0.99] cursor-pointer space-y-3"
+                >
+                  {/* Hàng 1: Thứ tự, Người bệnh, Điểm số */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-teal-700 to-teal-500 text-white font-extrabold text-sm flex items-center justify-center shadow-xs">
                           {r.userName?.charAt(0)?.toUpperCase() || 'P'}
                         </div>
-                        <div>
-                          <strong className="text-slate-900 dark:text-zinc-100 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors block font-bold">
-                            {r.userName || 'Bệnh nhân'}
-                          </strong>
-                          <span className="text-[10px] text-slate-400 font-mono block">
-                            {r.id}
-                          </span>
+                        <span className="absolute -bottom-1 -right-1 bg-slate-100 dark:bg-zinc-800 text-[10px] font-bold text-slate-600 dark:text-zinc-300 px-1 rounded-full border border-slate-200 dark:border-zinc-700">
+                          #{seq}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 dark:text-zinc-100 text-sm truncate flex items-center gap-1.5">
+                          <span>{r.userName || 'Bệnh nhân'}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {new Date(r.createdAt || r.visitDate).toLocaleDateString('vi-VN')} • Mã: {r.id}
                         </div>
                       </div>
-                    </td>
+                    </div>
 
-                    <td className="py-3 px-3 whitespace-nowrap">
+                    {/* Điểm tổng sao */}
+                    <div className="shrink-0 text-right">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl font-black text-xs shadow-xs ${
+                        r.overallRating >= 4
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                          : r.overallRating === 3
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                      }`}>
+                        <Star className="w-3.5 h-3.5 fill-current" />
+                        <span>{r.overallRating}.0</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Khoa tiếp nhận & Thẻ định danh */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-100 dark:border-zinc-800 text-xs">
+                    <div className="flex items-center gap-1.5 font-semibold text-teal-800 dark:text-teal-300 truncate">
+                      <Building2 className="w-3.5 h-3.5 shrink-0 text-teal-600 dark:text-teal-400" />
+                      <span className="truncate">{r.departmentName}</span>
+                    </div>
+
+                    <div>
                       {isVerified ? (
-                        <div>
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300/60">
-                            <ShieldCheck className="w-3 h-3" />
-                            <span>{(r.cardType || 'Thẻ').toUpperCase()}</span>
-                          </span>
-                          {r.cardNumber && (
-                            <span className="text-[11px] font-mono text-slate-600 dark:text-zinc-400 block mt-0.5">
-                              {r.cardNumber}
-                            </span>
-                          )}
-                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300/60">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          <span>{r.cardType?.toUpperCase() || 'CCCD'}: {r.cardNumber || 'Đã xác thực'}</span>
+                        </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-500 text-[10px] font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/70 text-slate-600 dark:bg-zinc-700 dark:text-zinc-300 text-[10px] font-medium">
                           Ẩn danh
                         </span>
                       )}
-                    </td>
+                    </div>
+                  </div>
 
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <strong className="text-slate-800 dark:text-zinc-200 font-bold block">
-                        {r.departmentName}
-                      </strong>
-                    </td>
+                  {/* 4 Chỉ số con (Grid 4 ô rõ ràng) */}
+                  <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+                    <div className="p-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+                      <div className="text-slate-500 dark:text-zinc-400 text-[9px]">Thái độ</div>
+                      <div className="font-extrabold text-emerald-700 dark:text-emerald-300 text-xs mt-0.5">
+                        ★ {r.criteria?.serviceAttitude || r.overallRating}
+                      </div>
+                    </div>
+                    <div className="p-1.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                      <div className="text-slate-500 dark:text-zinc-400 text-[9px]">Cơ sở</div>
+                      <div className="font-extrabold text-blue-700 dark:text-blue-300 text-xs mt-0.5">
+                        ★ {r.criteria?.facilities || r.overallRating}
+                      </div>
+                    </div>
+                    <div className="p-1.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40">
+                      <div className="text-slate-500 dark:text-zinc-400 text-[9px]">Chờ đợi</div>
+                      <div className="font-extrabold text-amber-700 dark:text-amber-300 text-xs mt-0.5">
+                        ★ {r.criteria?.waitTime || r.overallRating}
+                      </div>
+                    </div>
+                    <div className="p-1.5 rounded-lg bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40">
+                      <div className="text-slate-500 dark:text-zinc-400 text-[9px]">Viện phí</div>
+                      <div className="font-extrabold text-purple-700 dark:text-purple-300 text-xs mt-0.5">
+                        ★ {r.criteria?.costTransparency || r.overallRating}
+                      </div>
+                    </div>
+                  </div>
 
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md font-extrabold text-[11px] ${
-                        r.overallRating >= 4
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          : r.overallRating === 3
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                      }`}>
-                        <Star className="w-3 h-3 fill-current" />
-                        <span>{r.overallRating}.0</span>
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-3 text-center font-semibold text-emerald-600">
-                      ★ {r.criteria?.serviceAttitude || r.overallRating}
-                    </td>
-                    <td className="py-3 px-3 text-center font-semibold text-blue-600">
-                      ★ {r.criteria?.facilities || r.overallRating}
-                    </td>
-                    <td className="py-3 px-3 text-center font-semibold text-amber-600">
-                      ★ {r.criteria?.waitTime || r.overallRating}
-                    </td>
-                    <td className="py-3 px-3 text-center font-semibold text-purple-600">
-                      ★ {r.criteria?.costTransparency || r.overallRating}
-                    </td>
-
-                    <td className="py-3 px-4 max-w-xs">
+                  {/* Tags & Lời nhắn: Rút gọn chỉ 1 dòng, xem chi tiết để xem toàn bộ */}
+                  {(parsed.tags.length > 0 || parsed.comment) && (
+                    <div className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis pt-0.5 text-xs">
                       {parsed.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-1">
-                          {parsed.tags.slice(0, 2).map((t) => (
-                            <span key={t} className="inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded text-[10px] truncate max-w-[130px]">
-                              {t}
-                            </span>
-                          ))}
-                          {parsed.tags.length > 2 && (
-                            <span className="text-[10px] text-slate-400 font-bold">
-                              +{parsed.tags.length - 2}
-                            </span>
-                          )}
-                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/50 text-[10px] text-teal-800 dark:text-teal-300 font-medium border border-teal-100 dark:border-teal-900/40 shrink-0 max-w-[140px] truncate">
+                          ✓ {parsed.tags[0]}
+                        </span>
+                      )}
+                      {parsed.tags.length > 1 && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-[10px] text-slate-600 dark:text-zinc-300 font-bold border border-slate-200 dark:border-zinc-700 shrink-0">
+                          +{parsed.tags.length - 1}
+                        </span>
                       )}
                       {parsed.comment && (
-                        <p className="text-[11px] text-slate-600 dark:text-zinc-400 line-clamp-1 italic">
+                        <span className="text-[11px] text-slate-500 dark:text-zinc-400 italic truncate">
                           &ldquo;{parsed.comment}&rdquo;
-                        </p>
+                        </span>
                       )}
-                    </td>
+                    </div>
+                  )}
 
-                    <td className="py-3 px-3 text-center whitespace-nowrap text-slate-500 text-[11px]">
-                      {new Date(r.createdAt || r.visitDate).toLocaleDateString('vi-VN')}
-                    </td>
+                  {/* Nút bấm xem */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">
+                      Nhấn vào để xem đầy đủ
+                    </span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Xem chi tiết</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
 
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedPatientReview(r);
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] shadow-xs cursor-pointer transition active:scale-95"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Xem chi tiết</span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+        {/* Chế độ xem Desktop & BẢNG IN (Bắt buộc hiện khi in window.print()) */}
+        <div className="hidden lg:block print:block overflow-x-auto print:overflow-visible">
+          <table className="w-full text-left text-xs border-collapse print:text-[11px] print:w-full">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-zinc-800/80 print:bg-slate-100 text-[11px] font-bold text-slate-600 dark:text-zinc-300 uppercase tracking-wider border-b border-slate-200/90 dark:border-zinc-700/80 print:border-slate-400">
+                <th className="py-3.5 px-3.5 w-12 text-center print:py-2 print:px-2">STT</th>
+                <th className="py-3.5 px-4 min-w-[180px] print:py-2 print:px-2">Người Bệnh</th>
+                <th className="py-3.5 px-3.5 min-w-[140px] print:py-2 print:px-2">Định Danh / Thẻ</th>
+                <th className="py-3.5 px-4 min-w-[190px] print:py-2 print:px-2">Khoa Phòng Tiếp Nhận</th>
+                <th className="py-3.5 px-3 text-center w-24 print:py-2 print:px-1">Tổng Điểm</th>
+                <th className="py-3.5 px-2.5 text-center print:py-2 print:px-1" title="Thái độ phục vụ">Thái Độ</th>
+                <th className="py-3.5 px-2.5 text-center print:py-2 print:px-1" title="Cơ sở vật chất">Cơ Sở</th>
+                <th className="py-3.5 px-2.5 text-center print:py-2 print:px-1" title="Thời gian chờ đợi">Chờ Đợi</th>
+                <th className="py-3.5 px-2.5 text-center print:py-2 print:px-1" title="Minh bạch viện phí">Viện Phí</th>
+                <th className="py-3.5 px-4 min-w-[220px] print:py-2 print:px-2">Tiêu Chí & Ý Kiến</th>
+                <th className="py-3.5 px-3 text-center whitespace-nowrap print:py-2 print:px-2">Thời Gian</th>
+                <th className="py-3.5 px-4 text-center w-28 print:hidden">Thao Tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/80 bg-white dark:bg-zinc-900">
+              {pagedReviews.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="py-12 text-center text-slate-400">
+                    <History className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-zinc-600" />
+                    <p className="font-semibold text-slate-600 dark:text-zinc-400">Không tìm thấy lượt đánh giá nào phù hợp với bộ lọc</p>
+                  </td>
+                </tr>
+              ) : (
+                pagedReviews.map((r, idx) => {
+                  const parsed = parseContent(r.content || '');
+                  const isVerified = r.hasCardVerified || (!r.isAnonymous && r.cardNumber);
+                  const seq = (safeCurrentPage - 1) * ITEMS_PER_PAGE + idx + 1;
+
+                  return (
+                    <tr
+                      key={r.id}
+                      onClick={() => setSelectedPatientReview(r)}
+                      className="hover:bg-teal-50/40 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer group"
+                    >
+                      {/* STT */}
+                      <td className="py-3.5 px-3.5 text-center font-bold text-slate-400 text-xs">
+                        {seq}
+                      </td>
+
+                      {/* Người bệnh */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-teal-700 to-teal-500 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                            {r.userName?.charAt(0)?.toUpperCase() || 'P'}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-slate-900 dark:text-zinc-100 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors block font-bold text-xs truncate max-w-[150px]">
+                              {r.userName || 'Bệnh nhân'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono block">
+                              {r.id}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Thẻ / Định danh */}
+                      <td className="py-3.5 px-3.5 whitespace-nowrap">
+                        {isVerified ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300/60">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                              <span>{(r.cardType || 'CCCD').toUpperCase()}</span>
+                            </span>
+                            {r.cardNumber && (
+                              <span className="text-[11px] font-mono text-slate-600 dark:text-zinc-400 block font-semibold">
+                                {r.cardNumber}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 text-[10px] font-medium border border-slate-200 dark:border-zinc-700">
+                            Ẩn danh
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Khoa phòng */}
+                      <td className="py-3.5 px-4">
+                        <span className="text-slate-800 dark:text-zinc-200 font-bold block text-xs leading-snug">
+                          {r.departmentName}
+                        </span>
+                      </td>
+
+                      {/* Đánh giá tổng */}
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-black text-xs shadow-xs ${
+                          r.overallRating >= 4
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                            : r.overallRating === 3
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                        }`}>
+                          <Star className="w-3.5 h-3.5 fill-current" />
+                          <span>{r.overallRating}.0</span>
+                        </span>
+                      </td>
+
+                      {/* 4 Trụ cột đánh giá (Đổi sang badge gọn, màu trực quan) */}
+                      <td className="py-3.5 px-2.5 text-center">
+                        <span className="inline-block px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold text-[11px]">
+                          ★ {r.criteria?.serviceAttitude || r.overallRating}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-2.5 text-center">
+                        <span className="inline-block px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-[11px]">
+                          ★ {r.criteria?.facilities || r.overallRating}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-2.5 text-center">
+                        <span className="inline-block px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-bold text-[11px]">
+                          ★ {r.criteria?.waitTime || r.overallRating}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-2.5 text-center">
+                        <span className="inline-block px-1.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-bold text-[11px]">
+                          ★ {r.criteria?.costTransparency || r.overallRating}
+                        </span>
+                      </td>
+
+                      {/* Tiêu chí & Lời nhắn: Chỉ hiển thị đúng 1 dòng gọn gàng, xem chi tiết mới xem toàn bộ */}
+                      <td className="py-3.5 px-4 max-w-[260px]">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                          {parsed.tags.length > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded-md text-[10px] font-medium border border-slate-200/60 dark:border-zinc-700 shrink-0 max-w-[140px] truncate">
+                              ✓ {parsed.tags[0]}
+                            </span>
+                          )}
+                          {parsed.tags.length > 1 && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200/60 shrink-0">
+                              +{parsed.tags.length - 1}
+                            </span>
+                          )}
+                          {parsed.comment ? (
+                            <span className="text-[11px] text-slate-500 dark:text-zinc-400 truncate italic">
+                              &ldquo;{parsed.comment}&rdquo;
+                            </span>
+                          ) : parsed.tags.length === 0 ? (
+                            <span className="text-[10px] text-slate-400 italic">Không có góp ý thêm</span>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      {/* Thời gian */}
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap text-slate-500 dark:text-zinc-400 text-[11px] font-medium">
+                        {new Date(r.createdAt || r.visitDate).toLocaleDateString('vi-VN')}
+                      </td>
+
+                      {/* Nút Xem chi tiết - Ẩn khi in */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap print:hidden">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPatientReview(r);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] shadow-xs cursor-pointer transition active:scale-95"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Chi tiết</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Phân trang */}
+        {/* Phân trang - Ẩn khi in */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between text-xs">
-            <span className="text-slate-500 text-[11px]">
-              Hiển thị {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(safeCurrentPage * ITEMS_PER_PAGE, filteredReviews.length)} trong tổng số {filteredReviews.length} lượt đánh giá
+          <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs bg-slate-50/40 dark:bg-zinc-900/40 print:hidden">
+            <span className="text-slate-500 dark:text-zinc-400 text-[11px]">
+              Hiển thị <strong className="text-slate-700 dark:text-zinc-200">{(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}</strong> - <strong className="text-slate-700 dark:text-zinc-200">{Math.min(safeCurrentPage * ITEMS_PER_PAGE, filteredReviews.length)}</strong> trong tổng số <strong className="text-teal-700 dark:text-teal-400">{filteredReviews.length}</strong> lượt đánh giá
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={safeCurrentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-zinc-800 font-semibold"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-zinc-800 font-bold text-slate-700 dark:text-zinc-200 transition"
               >
-                Trước
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Trước</span>
               </button>
-              <span className="px-2 font-bold text-slate-800 dark:text-zinc-200">
-                Trang {safeCurrentPage} / {totalPages}
+              <span className="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-extrabold text-xs">
+                {safeCurrentPage} / {totalPages}
               </span>
               <button
                 type="button"
                 disabled={safeCurrentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-zinc-800 font-semibold"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-zinc-800 font-bold text-slate-700 dark:text-zinc-200 transition"
               >
-                Sau
+                <span>Sau</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -639,28 +1112,35 @@ export function PatientReviewsHistory({
         });
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+          <div 
+            className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-300"
+            onClick={() => setSelectedPatientReview(null)}
+          >
+            <div 
+              className="bg-white dark:bg-zinc-900 w-full max-w-xl sm:max-w-2xl h-full shadow-2xl border-l border-slate-200 dark:border-zinc-800 flex flex-col animate-in slide-in-from-right duration-300 ease-out"
+              onClick={(e) => e.stopPropagation()}
+            >
               
-              {/* Header Modal */}
-              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-teal-800 text-white">
+              {/* Header Drawer */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-teal-800 text-white shrink-0">
                 <div className="flex items-center gap-3">
                   <span className="p-2.5 rounded-xl bg-white/10 backdrop-blur-xs">
                     <User className="w-5 h-5 text-white" />
                   </span>
                   <div>
                     <h3 className="font-extrabold text-base sm:text-lg leading-tight">
-                      Hồ Sơ Chi Tiết Người Bệnh & Phiếu Đánh Giá
+                      Hồ Sơ Chi Tiết & Phiếu Đánh Giá
                     </h3>
                     <span className="text-xs text-teal-100 font-mono">
-                      Mã phiếu: {r.id} • Ngày: {new Date(r.createdAt || r.visitDate).toLocaleString('vi-VN')}
+                      Mã phiếu: {r.id} • {new Date(r.createdAt || r.visitDate).toLocaleString('vi-VN')}
                     </span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedPatientReview(null)}
-                  className="p-1.5 rounded-xl hover:bg-white/20 transition cursor-pointer text-white"
+                  className="p-2 rounded-xl hover:bg-white/20 transition cursor-pointer text-white flex items-center gap-1 text-xs font-semibold"
+                  title="Đóng (Esc)"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -830,7 +1310,7 @@ export function PatientReviewsHistory({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={() => handlePrintSingleReview(r)}
                     className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
