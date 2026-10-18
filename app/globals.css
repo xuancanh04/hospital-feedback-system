@@ -180,3 +180,46 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Tối ưu hóa khi in giấy (A4 Landscape / Portrait) */
+@media print {
+  @page {
+    size: auto;
+    margin: 10mm 8mm;
+  }
+  
+  /* Ẩn triệt để thanh menu, header hệ thống, modal trượt không cần thiết */
+  header,
+  nav,
+  aside,
+  [class*="print:hidden"] {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Đảm bảo bảng luôn hiển thị đầy đủ và không bị cắt dòng xui rủi */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: bold !important;
+  }
+}
