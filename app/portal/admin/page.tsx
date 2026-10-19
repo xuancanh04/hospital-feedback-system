@@ -47,24 +47,31 @@ import {
   UserCheck,
   UserX,
   AlertTriangle,
-  History
+  History,
+  Tag,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AdminAnalyticsView } from '@/components/admin-analytics-view';
 import { PatientReviewsHistory } from '@/components/patient-reviews-history';
+import { AdminTagsConfigView } from '@/components/admin-tags-config-view';
 
 export default function AdminPortalPage() {
-  const { users, createUserByAdmin, deleteUserByAdmin, toggleUserStatus } = useAuth();
+  const { currentUser, users, createUserByAdmin, deleteUserByAdmin, toggleUserStatus, logout } = useAuth();
   const {
     reviews,
     departments,
+    positiveTags,
+    criticalTags,
+    addReview,
     addDepartment,
     updateDepartment,
     deleteDepartment,
     updateReviewStatus,
   } = useFeedback();
 
-  const [activeTab, setActiveTab] = useState<'analytics' | 'reviews' | 'departments' | 'users'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'reviews' | 'departments' | 'users' | 'tags'>('analytics');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -415,6 +422,32 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => {
+                  setActiveTab('tags');
+                  if (window.innerWidth < 1024) setSidebarOpen(false);
+                }}
+                title="Cấu Hình Thẻ Đánh Giá"
+                className={`w-full flex items-center ${
+                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
+                } rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer group ${
+                  activeTab === 'tags'
+                    ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25'
+                    : 'text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-zinc-800/60'
+                }`}
+              >
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+                  <Tag className={`w-4 h-4 shrink-0 transition-colors ${activeTab === 'tags' ? 'text-white' : 'text-teal-600 dark:text-teal-400 group-hover:text-teal-700'}`} />
+                  {!isCollapsed && <span>Cấu Hình Thẻ Khảo Sát</span>}
+                </div>
+                {!isCollapsed && (
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${activeTab === 'tags' ? 'bg-emerald-700/80 text-emerald-100' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`}>
+                    {positiveTags.length + criticalTags.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setActiveTab('users');
                   if (window.innerWidth < 1024) setSidebarOpen(false);
                 }}
@@ -440,11 +473,13 @@ export default function AdminPortalPage() {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 hidden lg:block">
+          {/* Footer Sidebar: Nút thu gọn */}
+          <div className="pt-2 border-t border-slate-100 dark:border-zinc-800">
+
             <button
               type="button"
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className={`w-full flex items-center ${
+              className={`w-full hidden lg:flex items-center ${
                 isCollapsed ? 'justify-center px-2 py-2' : 'justify-between px-3 py-2'
               } text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer`}
               title={isCollapsed ? 'Mở rộng' : 'Thu gọn'}
@@ -465,23 +500,27 @@ export default function AdminPortalPage() {
 
         <div className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 overflow-y-auto">
           
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-zinc-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          {/* Tiêu Đề Trang Điều Hành */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80 dark:border-zinc-800">
             <div>
-              <h1 className="text-lg sm:text-xl md:text-2xl font-black text-[#000080] dark:text-white tracking-tight uppercase">
+              <h1 className="text-xl sm:text-2xl font-black text-[#000080] dark:text-white tracking-tight uppercase">
                 {activeTab === 'analytics' && 'Thống Kê & Báo Cáo Chất Lượng'}
                 {activeTab === 'reviews' && 'Lịch Sử Đánh Giá Của Bệnh Nhân'}
                 {activeTab === 'departments' && 'Quản Lý Danh Sách Khoa Phòng'}
                 {activeTab === 'users' && 'Quản Lý Tài Khoản Quản Trị'}
+                {activeTab === 'tags' && 'Cấu Hình Thẻ Đánh Giá Nhanh Cho Bệnh Nhân'}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mt-0.5">
-                Cổng giám sát điều hành thời gian thực • Bệnh viện Quân y 7A
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mt-1 flex items-center gap-2">
+                <span>Cổng giám sát điều hành thời gian thực</span>
+                <span>•</span>
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">Bệnh viện Quân y 7A</span>
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 text-xs font-semibold border border-emerald-200/80">
-                CSAT Toàn Viện: <strong className="ml-1 font-bold">{avgRating}</strong>/5.0
-              </span>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-300">
+              <span>CSAT Toàn Viện:</span>
+              <strong className="text-sm font-black text-emerald-700 dark:text-emerald-400">{avgRating}</strong>
+              <span className="text-slate-400">/ 5.0</span>
             </div>
           </div>
 
@@ -490,15 +529,21 @@ export default function AdminPortalPage() {
             reviews={reviews}
             departments={departments}
             getDeptCategory={getDeptCategory}
+            onNavigateToReviews={() => setActiveTab('reviews')}
           />
         )}
 
-                {activeTab === 'reviews' && (
+        {activeTab === 'reviews' && (
           <PatientReviewsHistory
             reviews={reviews}
             departments={departments}
             onUpdateStatus={updateReviewStatus}
+            onAddReview={addReview}
           />
+        )}
+
+        {activeTab === 'tags' && (
+          <AdminTagsConfigView />
         )}
 
         {activeTab === 'departments' && (
@@ -1283,6 +1328,7 @@ export default function AdminPortalPage() {
           </div>
         </div>
       )}
+
     </ProtectedRoute>
   );
 }

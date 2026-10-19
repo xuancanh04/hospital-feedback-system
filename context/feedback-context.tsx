@@ -1,13 +1,23 @@
 'use client';
 
 import React, { createContext, useContext, useState } from 'react';
-import { Department, Doctor, Review, ReviewStatus, OfficialReply } from '@/types';
-import { INITIAL_DEPARTMENTS, INITIAL_DOCTORS, INITIAL_REVIEWS } from '@/lib/mock-data';
+import { Department, Doctor, Review, ReviewStatus, OfficialReply, FeedbackTagsConfig } from '@/types';
+import { 
+  INITIAL_DEPARTMENTS, 
+  INITIAL_DOCTORS, 
+  INITIAL_REVIEWS,
+  DEFAULT_POSITIVE_TAGS,
+  DEFAULT_CRITICAL_TAGS
+} from '@/lib/mock-data';
 
 interface FeedbackContextType {
   departments: Department[];
   doctors: Doctor[];
   reviews: Review[];
+  positiveTags: string[];
+  criticalTags: string[];
+  updateTags: (config: FeedbackTagsConfig) => Promise<void>;
+  resetTagsToDefault: () => Promise<void>;
   addReview: (review: Omit<Review, 'id' | 'createdAt' | 'status' | 'likes'>) => Promise<void>;
   updateReviewStatus: (reviewId: string, status: ReviewStatus) => Promise<void>;
   deleteReview: (reviewId: string) => Promise<void>;
@@ -24,8 +34,24 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [departments, setDepartments] = useState<Department[]>(INITIAL_DEPARTMENTS);
   const [doctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [reviews, setReviews] = useState<Review[]>(INITIAL_REVIEWS);
+  const [positiveTags, setPositiveTags] = useState<string[]>(DEFAULT_POSITIVE_TAGS);
+  const [criticalTags, setCriticalTags] = useState<string[]>(DEFAULT_CRITICAL_TAGS);
 
   React.useEffect(() => {
+    // 0. Tải danh sách thẻ đánh giá nhanh từ localStorage
+    try {
+      const savedPositive = localStorage.getItem('hospital_7a_tags_positive');
+      if (savedPositive) {
+        const parsed = JSON.parse(savedPositive);
+        if (Array.isArray(parsed) && parsed.length > 0) setPositiveTags(parsed);
+      }
+      const savedCritical = localStorage.getItem('hospital_7a_tags_critical');
+      if (savedCritical) {
+        const parsed = JSON.parse(savedCritical);
+        if (Array.isArray(parsed) && parsed.length > 0) setCriticalTags(parsed);
+      }
+    } catch {}
+
     // 1. Tải danh sách đánh giá từ API PostgreSQL
     const fetchReviewsFromDB = async () => {
       try {
@@ -203,12 +229,30 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     saveDepartmentsLocal(departments.filter((d) => d.id !== id));
   };
 
+  const updateTags = async (config: FeedbackTagsConfig) => {
+    setPositiveTags(config.positiveTags);
+    setCriticalTags(config.criticalTags);
+    localStorage.setItem('hospital_7a_tags_positive', JSON.stringify(config.positiveTags));
+    localStorage.setItem('hospital_7a_tags_critical', JSON.stringify(config.criticalTags));
+  };
+
+  const resetTagsToDefault = async () => {
+    setPositiveTags(DEFAULT_POSITIVE_TAGS);
+    setCriticalTags(DEFAULT_CRITICAL_TAGS);
+    localStorage.setItem('hospital_7a_tags_positive', JSON.stringify(DEFAULT_POSITIVE_TAGS));
+    localStorage.setItem('hospital_7a_tags_critical', JSON.stringify(DEFAULT_CRITICAL_TAGS));
+  };
+
   return (
     <FeedbackContext.Provider
       value={{
         departments,
         doctors,
         reviews,
+        positiveTags,
+        criticalTags,
+        updateTags,
+        resetTagsToDefault,
         addReview,
         updateReviewStatus,
         deleteReview,

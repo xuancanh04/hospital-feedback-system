@@ -37,18 +37,23 @@ import {
   User,
   FileText,
   CreditCard,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from 'lucide-react';
 
 interface AdminAnalyticsViewProps {
   reviews: Review[];
   departments: Department[];
   getDeptCategory: (d: { category?: string; name: string; code?: string }) => 'noi' | 'ngoai' | 'canlamsang';
+  onNavigateToReviews?: () => void;
 }
 
 export function AdminAnalyticsView({
   reviews,
   departments,
   getDeptCategory,
+  onNavigateToReviews,
 }: AdminAnalyticsViewProps) {
   // Bộ lọc thời gian và chuyên khoa
   const [timeFilter, setTimeFilter] = useState<'all' | '7days' | '30days' | 'quarter' | 'year'>('all');
@@ -58,6 +63,12 @@ export function AdminAnalyticsView({
   const [rankingTab, setRankingTab] = useState<'all' | 'top' | 'needs_attention'>('all');
   // State mở modal chi tiết cho từng thẻ KPI tổng quan
   const [activeKpiModal, setActiveKpiModal] = useState<'total' | 'rating' | 'csat' | 'verified' | null>(null);
+
+  // Phân chia tiểu mục (Sub-tabs) cho trang Thống Kê để giao diện cực kỳ gọn gàng
+  const [analyticsSection, setAnalyticsSection] = useState<'overview' | 'departments' | 'reviews'>('overview');
+
+  // Trạng thái thu gọn/mở rộng bảng nhật ký chi tiết đánh giá (mặc định thu gọn để trang gọn gàng)
+  const [isReviewsExpanded, setIsReviewsExpanded] = useState(false);
 
   // Bộ lọc và tìm kiếm riêng cho danh sách chi tiết lượt đánh giá
   const [reviewSearch, setReviewSearch] = useState('');
@@ -368,21 +379,133 @@ export function AdminAnalyticsView({
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300 print:space-y-4">
       
       {/* ---------------------------------------------------------------------
+          CỤM 4 THẺ KPI TỔNG THỂ (EXECUTIVE KPI CARDS) - CÓ THỂ NHẤN ĐỂ XEM CHI TIẾT
+      --------------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        
+        {/* KPI 1: Tổng lượt đánh giá */}
+        <div 
+          onClick={() => setActiveKpiModal('total')}
+          className="relative overflow-hidden bg-gradient-to-br from-white to-slate-50/70 dark:from-zinc-900 dark:to-zinc-900/60 p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-teal-500/60 transition-all duration-200 cursor-pointer group select-none"
+          title="Nhấn để xem chi tiết phân bố lượt khảo sát"
+        >
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+              Tổng Lượt Khảo Sát
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200/60 dark:border-teal-800/60 flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-zinc-100 tracking-tight group-hover:text-teal-600 transition-colors">
+              {totalRev.toLocaleString('vi-VN')}
+            </div>
+            <div className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>Phủ kín {departments.length} khoa chuyên môn</span>
+            </div>
+          </div>
+          <div className="absolute right-0 bottom-0 w-24 h-24 bg-teal-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-teal-500/10 transition-colors" />
+        </div>
+
+        {/* KPI 2: Điểm TB Toàn Diện */}
+        <div 
+          onClick={() => setActiveKpiModal('rating')}
+          className="relative overflow-hidden bg-gradient-to-br from-white to-amber-50/20 dark:from-zinc-900 dark:to-zinc-900/60 p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-amber-500/60 transition-all duration-200 cursor-pointer group select-none"
+          title="Nhấn để xem chi tiết cơ cấu điểm trung bình"
+        >
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+              Điểm TB Toàn Diện
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+              <Star className="w-4 h-4 fill-amber-500" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-zinc-100 tracking-tight flex items-baseline gap-1.5">
+              <span className="text-amber-500 font-black">{avgRating}</span>
+              <span className="text-xs font-semibold text-slate-400">/ 5.0</span>
+            </div>
+            <div className="mt-2 text-xs font-semibold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span className="text-emerald-700 dark:text-emerald-300">
+                {parseFloat(avgRating) >= 4.5 ? 'Đạt loại Xuất sắc' : parseFloat(avgRating) >= 4.0 ? 'Đạt chuẩn chất lượng' : 'Cần chấn chỉnh'}
+              </span>
+            </div>
+          </div>
+          <div className="absolute right-0 bottom-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-colors" />
+        </div>
+
+        {/* KPI 3: Chỉ số CSAT */}
+        <div 
+          onClick={() => setActiveKpiModal('csat')}
+          className="relative overflow-hidden bg-gradient-to-br from-white to-emerald-50/20 dark:from-zinc-900 dark:to-zinc-900/60 p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-emerald-500/60 transition-all duration-200 cursor-pointer group select-none"
+          title="Nhấn để xem chi tiết tỷ lệ hài lòng"
+        >
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+              Tỷ Lệ Hài Lòng (CSAT)
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+              {csatScore}%
+            </div>
+            <div className="mt-2 text-xs font-medium text-slate-500 dark:text-zinc-400">
+              Chỉ tiêu Bộ Y tế: <strong className="font-semibold text-slate-700 dark:text-zinc-300">≥ 90%</strong>
+            </div>
+          </div>
+          <div className="absolute right-0 bottom-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
+        </div>
+
+        {/* KPI 4: Tỷ lệ quét thẻ xác thực */}
+        <div 
+          onClick={() => setActiveKpiModal('verified')}
+          className="relative overflow-hidden bg-gradient-to-br from-white to-blue-50/20 dark:from-zinc-900 dark:to-zinc-900/60 p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-blue-500/60 transition-all duration-200 cursor-pointer group select-none"
+          title="Nhấn để xem chi tiết cơ cấu xác thực thẻ chip"
+        >
+          <div className="flex items-start justify-between">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+              Xác Thực CCCD / BHYT
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5">
+            <div className="text-3xl sm:text-4xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
+              {verifiedRate}%
+            </div>
+            <div className="mt-2 text-xs font-medium text-blue-700 dark:text-blue-300">
+              <strong className="font-bold">{verifiedCount}</strong> lượt quét thẻ chip Kiosk
+            </div>
+          </div>
+          <div className="absolute right-0 bottom-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-blue-500/10 transition-colors" />
+        </div>
+
+      </div>
+
+      {/* ---------------------------------------------------------------------
           THANH ĐIỀU HƯỚNG BỘ LỌC ĐA CHIỀU & HÀNH ĐỘNG XUẤT BÁO CÁO
       --------------------------------------------------------------------- */}
-      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs space-y-4 print:hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
+      <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-sm space-y-4 print:hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-zinc-800">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400">
-                <BarChart3 className="w-5 h-5" />
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 border border-teal-200/60 dark:border-teal-800/60">
+                <BarChart3 className="w-4 h-4" />
               </span>
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-zinc-100">
                 Bộ Lọc & Phân Tích Dữ Liệu Đánh Giá
               </h2>
             </div>
             <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-              Hệ thống lọc thời gian thực từ máy Kiosk tại các sảnh và khoa phòng Bệnh viện Quân y 7A
+              Hệ thống tổng hợp & lọc dữ liệu thời gian thực từ mạng lưới Kiosk khảo sát Bệnh viện Quân y 7A
             </p>
           </div>
 
@@ -390,7 +513,7 @@ export function AdminAnalyticsView({
             <button
               type="button"
               onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 cursor-pointer transition active:scale-95"
               title="Xuất bảng số liệu ra file Excel (.CSV)"
             >
               <Download className="w-4 h-4" />
@@ -400,7 +523,7 @@ export function AdminAnalyticsView({
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold border border-slate-200 dark:border-zinc-700 cursor-pointer transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold border border-slate-200 dark:border-zinc-700 cursor-pointer transition active:scale-95"
               title="In báo cáo tổng hợp A4"
             >
               <Printer className="w-4 h-4" />
@@ -505,97 +628,69 @@ export function AdminAnalyticsView({
       </div>
 
       {/* ---------------------------------------------------------------------
-          CỤM 4 THẺ KPI TỔNG THỂ (EXECUTIVE KPI CARDS)
+          THANH CHUYỂN TIỂU MỤC (SUB-TABS) - GIÚP TRANG GỌN GÀNG, KHÔNG PHẢI CUỘN DÀI
       --------------------------------------------------------------------- */}
-      {/* ---------------------------------------------------------------------
-          CỤM 4 THẺ KPI TỔNG THỂ (EXECUTIVE KPI CARDS) - CÓ THỂ NHẤN ĐỂ XEM CHI TIẾT
-      --------------------------------------------------------------------- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        
-        {/* KPI 1: Tổng lượt đánh giá */}
-        <div 
-          onClick={() => setActiveKpiModal('total')}
-          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-teal-500 hover:shadow-md transition group select-none"
-          title="Nhấn để xem chi tiết phân bố lượt khảo sát"
-        >
-          <div>
-            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
-              Tổng Lượt Khảo Sát
+      <div className="flex flex-wrap items-center justify-between gap-3 p-1.5 rounded-2xl bg-slate-100/80 dark:bg-zinc-800/80 border border-slate-200/80 dark:border-zinc-700/80 print:hidden">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setAnalyticsSection('overview')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              analyticsSection === 'overview'
+                ? 'bg-white dark:bg-zinc-900 text-teal-800 dark:text-teal-300 shadow-sm'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Activity className="w-4 h-4 text-teal-600" />
+            <span>1. 4 Trụ Cột & Biểu Đồ Chỉ Số</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAnalyticsSection('departments')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              analyticsSection === 'departments'
+                ? 'bg-white dark:bg-zinc-900 text-teal-800 dark:text-teal-300 shadow-sm'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Award className="w-4 h-4 text-amber-500" />
+            <span>2. Xếp Hạng 20 Khoa Phòng</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
+              {departments.length}
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-zinc-100 mt-1 group-hover:text-teal-600 transition-colors">
-              {totalRev}
-            </div>
-          </div>
-          <div className="mt-2 text-[10px] sm:text-xs text-emerald-600 font-semibold flex items-center gap-1">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            <span>Phủ kín {departments.length} khoa phòng</span>
-          </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAnalyticsSection('reviews')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              analyticsSection === 'reviews'
+                ? 'bg-white dark:bg-zinc-900 text-teal-800 dark:text-teal-300 shadow-sm'
+                : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <FileText className="w-4 h-4 text-blue-600" />
+            <span>3. Chi Tiết Lượt Khảo Sát</span>
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+              {filteredReviews.length}
+            </span>
+          </button>
         </div>
 
-        {/* KPI 2: Điểm TB Toàn Diện */}
-        <div 
-          onClick={() => setActiveKpiModal('rating')}
-          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-amber-500 hover:shadow-md transition group select-none"
-          title="Nhấn để xem chi tiết cơ cấu điểm trung bình"
-        >
-          <div>
-            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
-              Điểm TB Toàn Diện
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-amber-500 mt-1 flex items-baseline gap-1">
-              <span>★ {avgRating}</span>
-              <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
-            </div>
-          </div>
-          <div className="mt-2 text-[10px] sm:text-xs text-emerald-600 font-semibold">
-            {parseFloat(avgRating) >= 4.5 ? 'Đạt loại Xuất sắc' : parseFloat(avgRating) >= 4.0 ? 'Đạt chuẩn chất lượng' : 'Cần chấn chỉnh'}
-          </div>
+        <div className="text-[11px] font-semibold text-slate-400 px-3 hidden lg:block">
+          Chọn từng mục để xem chi tiết, trang luôn hiển thị vừa vặn màn hình
         </div>
-
-        {/* KPI 3: Chỉ số CSAT */}
-        <div 
-          onClick={() => setActiveKpiModal('csat')}
-          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-teal-500 hover:shadow-md transition group select-none"
-          title="Nhấn để xem chi tiết tỷ lệ hài lòng"
-        >
-          <div>
-            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
-              Tỷ Lệ Hài Lòng (CSAT)
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-teal-600 mt-1">
-              {csatScore}%
-            </div>
-          </div>
-          <div className="mt-2 text-[10px] sm:text-xs text-slate-500 font-medium">
-            Chỉ tiêu Bộ Y tế: ≥ 90%
-          </div>
-        </div>
-
-        {/* KPI 4: Tỷ lệ quét thẻ xác thực */}
-        <div 
-          onClick={() => setActiveKpiModal('verified')}
-          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-blue-500 hover:shadow-md transition group select-none"
-          title="Nhấn để xem chi tiết cơ cấu xác thực thẻ chip"
-        >
-          <div>
-            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
-              Xác Thực CCCD / BHYT
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-blue-600 mt-1">
-              {verifiedRate}%
-            </div>
-          </div>
-          <div className="mt-2 text-[10px] sm:text-xs text-blue-600/90 font-medium">
-            {verifiedCount} lượt quét thẻ chip
-          </div>
-        </div>
-
       </div>
 
       {/* ---------------------------------------------------------------------
-          PHÂN TÍCH 4 TIÊU CHÍ CỐT LÕI CỦA BỘ Y TẾ
+          NỘI DUNG TIỂU MỤC 1: 4 TRỤ CỘT BỘ Y TẾ, BIỂU ĐỒ & TOP THẺ ĐÁNH GIÁ
       --------------------------------------------------------------------- */}
-      <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs space-y-4">
+      {(analyticsSection === 'overview' || typeof window === 'undefined') && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          
+          {/* PHÂN TÍCH 4 TIÊU CHÍ CỐT LÕI CỦA BỘ Y TẾ */}
+          <div className="bg-white dark:bg-zinc-900 p-5 sm:p-6 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-zinc-800 pb-3">
           <div>
             <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
@@ -823,12 +918,15 @@ export function AdminAnalyticsView({
           </div>
         </div>
 
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* ---------------------------------------------------------------------
-          BẢNG XẾP HẠNG CHI TIẾT KHOA PHÒNG ĐẦY ĐỦ 4 TIÊU CHÍ
+          NỘI DUNG TIỂU MỤC 2: BẢNG XẾP HẠNG CHI TIẾT KHOA PHÒNG ĐẦY ĐỦ 4 TIÊU CHÍ
       --------------------------------------------------------------------- */}
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs overflow-hidden">
+      {(analyticsSection === 'departments' || typeof window === 'undefined') && (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs overflow-hidden animate-in fade-in duration-200">
         
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/60 dark:bg-zinc-900/60">
           <div>
@@ -964,8 +1062,11 @@ export function AdminAnalyticsView({
                       onClick={() => {
                         setSelectedDeptId(d.id);
                         setReviewPage(1);
-                        const el = document.getElementById('patient-reviews-section');
-                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        setIsReviewsExpanded(true);
+                        setTimeout(() => {
+                          const el = document.getElementById('patient-reviews-section');
+                          if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        }, 100);
                       }}
                       className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 hover:bg-teal-100 transition cursor-pointer"
                       title={`Xem danh sách các lượt đánh giá của ${d.name}`}
@@ -980,27 +1081,83 @@ export function AdminAnalyticsView({
         </div>
 
       </div>
+      )}
 
       {/* ---------------------------------------------------------------------
-          MỤC MỚI: DANH SÁCH CHI TIẾT CÁC LƯỢT ĐÁNH GIÁ CỦA BỆNH NHÂN
+          NỘI DUNG TIỂU MỤC 3: DANH SÁCH CHI TIẾT CÁC LƯỢT ĐÁNH GIÁ CỦA BỆNH NHÂN
       --------------------------------------------------------------------- */}
-      <div id="patient-reviews-section" className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs p-4 sm:p-6 space-y-4">
+      {(analyticsSection === 'reviews' || typeof window === 'undefined') && (
+      <div id="patient-reviews-section" className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs overflow-hidden transition-all animate-in fade-in duration-200">
         
-        {/* Tiêu đề & thanh tìm kiếm */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
-                <FileText className="w-5 h-5" />
-              </span>
-              <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-zinc-100">
-                Nhật Ký & Chi Tiết Lượt Đánh Giá Của Bệnh Nhân ({detailedReviewsList.length})
-              </h3>
+        {/* Header có nút Thu gọn / Mở rộng và Nút chuyển sang tab Lịch Sử Đầy Đủ */}
+        <div 
+          onClick={() => setIsReviewsExpanded(!isReviewsExpanded)}
+          className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none hover:bg-slate-50/70 dark:hover:bg-zinc-800/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
+              <FileText className="w-5 h-5" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-zinc-100">
+                  Nhật Ký & Chi Tiết Lượt Đánh Giá Của Bệnh Nhân
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                  {detailedReviewsList.length} lượt
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                {isReviewsExpanded 
+                  ? 'Bấm vào tiêu đề này để thu gọn bảng danh sách'
+                  : 'Đã thu gọn để trang thống kê ngắn gọn. Bấm để mở rộng xem nhanh hoặc chuyển sang tab Lịch Sử Đánh Giá'}
+              </p>
             </div>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-              Bấm vào bất kỳ dòng nào để xem chi tiết thẻ CCCD/BHYT, 4 tiêu chí và phản hồi của người bệnh
-            </p>
           </div>
+
+          <div className="flex items-center gap-2 self-start md:self-auto" onClick={(e) => e.stopPropagation()}>
+            {onNavigateToReviews && (
+              <button
+                type="button"
+                onClick={onNavigateToReviews}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold transition"
+                title="Mở toàn màn hình tại tab Lịch Sử Đánh Giá"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                <span>Xem Toàn Bộ Lịch Sử</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsReviewsExpanded(!isReviewsExpanded)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition"
+            >
+              {isReviewsExpanded ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  <span>Thu Gọn</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  <span>Mở Rộng Bảng ({detailedReviewsList.length})</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Nội dung bảng chỉ hiển thị khi mở rộng */}
+        {isReviewsExpanded && (
+          <div className="p-4 sm:p-6 border-t border-slate-100 dark:border-zinc-800 space-y-4 animate-in fade-in duration-200">
+            {/* Tiêu đề & thanh tìm kiếm */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
+              <div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                  Bấm vào bất kỳ dòng nào để xem chi tiết thẻ CCCD/BHYT, 4 tiêu chí và phản hồi của người bệnh
+                </p>
+              </div>
 
           {/* Ô tìm kiếm & lọc sao */}
           <div className="flex flex-wrap items-center gap-2">
@@ -1201,8 +1358,11 @@ export function AdminAnalyticsView({
             <p className="text-xs">Thử đổi từ khóa tìm kiếm hoặc chọn &quot;Toàn bộ thời gian&quot; ở bộ lọc trên</p>
           </div>
         )}
+          </div>
+        )}
 
       </div>
+      )}
 
       {/* ---------------------------------------------------------------------
           MODAL CHI TIẾT TOÀN DIỆN MỘT LƯỢT ĐÁNH GIÁ CỦA BỆNH NHÂN

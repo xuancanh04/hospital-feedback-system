@@ -460,3 +460,37 @@ export const INITIAL_REVIEWS: Review[] = [
     likes: 4,
   },
 ];
+
+// Danh sách các thẻ khen ngợi (Dành cho 4 - 5 sao: Rất hài lòng / Hài lòng)
+export const DEFAULT_POSITIVE_TAGS: string[] = [
+  'Bác sĩ tận tình, chu đáo',
+  'Y tá hướng dẫn nhiệt tình',
+  'Thủ tục nhanh chóng',
+  'Cơ sở vật chất sạch sẽ',
+  'Thời gian chờ đợi hợp lý',
+  'Giải thích bệnh rõ ràng',
+  'Chi phí công khai, minh bạch',
+  'Trang thiết bị hiện đại',
+  'An ninh, trật tự chu đáo',
+  'Cán bộ tiếp đón ân cần',
+  'Phòng bệnh thoáng mát',
+  'Cấp cứu xử trí kịp thời',
+  'Cơm viện đầy đủ dinh dưỡng',
+  'Nhân viên vui vẻ niềm nở'
+];
+
+// Danh sách các thẻ góp ý / phàn nàn (Dành cho 1 - 2 - 3 sao: Chưa hài lòng / Thất vọng)
+export const DEFAULT_CRITICAL_TAGS: string[] = [
+  'Thời gian chờ đợi quá lâu',
+  'Thái độ tiếp đón chưa niềm nở',
+  'Bác sĩ tư vấn quá nhanh',
+  'Khu vệ sinh chưa sạch sẽ',
+  'Thủ tục giấy tờ còn rườm rà',
+  'Hệ thống gọi số hay bị lỗi',
+  'Nhà xe bệnh viện quá tải',
+  'Chi phí chưa giải thích rõ',
+  'Phòng chờ còn oi bức, ngột ngạt',
+  'Bảng chỉ dẫn chưa rõ ràng',
+  'Điều dưỡng trả lời gắt gỏng',
+  'Cần tăng thêm bàn khám buổi sáng'
+];

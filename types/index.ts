@@ -109,3 +109,15 @@ export interface PatientCardInfo {
   hospitalInitial?: string;
   scannedAt: string;
 }
+
+export interface FeedbackTagItem {
+  id: string;
+  text: string;
+  type: 'positive' | 'critical';
+  enabled: boolean;
+}
+
+export interface FeedbackTagsConfig {
+  positiveTags: string[];
+  criticalTags: string[];
+}

@@ -21,18 +21,22 @@ import {
   ChevronRight,
   ArrowUpDown,
   History,
+  Plus,
 } from 'lucide-react';
+import { AdminAddReviewModal } from './admin-add-review-modal';
 
 interface PatientReviewsHistoryProps {
   reviews: Review[];
   departments: Department[];
   onUpdateStatus?: (reviewId: string, status: any) => void;
+  onAddReview?: (review: Omit<Review, 'id' | 'createdAt' | 'status' | 'likes'>) => Promise<void>;
 }
 
 export function PatientReviewsHistory({
   reviews,
   departments,
   onUpdateStatus,
+  onAddReview,
 }: PatientReviewsHistoryProps) {
   // Bộ lọc
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +52,9 @@ export function PatientReviewsHistory({
 
   // Modal xem chi tiết bệnh nhân & đánh giá
   const [selectedPatientReview, setSelectedPatientReview] = useState<Review | null>(null);
+
+  // Modal thêm đánh giá / khảo sát mới cho bệnh nhân
+  const [showAddReviewModal, setShowAddReviewModal] = useState(false);
 
   // Tách nội dung thẻ và lời nhắn
   const parseContent = (content: string) => {
@@ -573,7 +580,17 @@ export function PatientReviewsHistory({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start lg:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+            {onAddReview && (
+              <button
+                type="button"
+                onClick={() => setShowAddReviewModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs cursor-pointer transition active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm Đánh Giá / Khảo Sát</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleExportCSV}
@@ -860,14 +877,14 @@ export function PatientReviewsHistory({
         <div className="hidden lg:block print:block overflow-x-auto print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse print:text-[11px] print:w-full">
             <thead>
-              <tr className="bg-slate-50/95 dark:bg-zinc-800/90 print:bg-slate-100 text-[11px] font-bold text-slate-600 dark:text-zinc-300 uppercase tracking-wider border-b border-slate-200 dark:border-zinc-700">
-                <th className="py-3.5 px-3.5 w-12 text-center">STT</th>
-                <th className="py-3.5 px-4 min-w-[180px]">Người Bệnh</th>
-                <th className="py-3.5 px-3.5 min-w-[140px]">Định Danh / Thẻ</th>
-                <th className="py-3.5 px-4 min-w-[200px]">Khoa Phòng Tiếp Nhận</th>
-                <th className="py-3.5 px-3.5 text-center w-28">Tổng Điểm</th>
-                <th className="py-3.5 px-4 min-w-[260px]">Tiêu Chí & Góp Ý</th>
-                <th className="py-3.5 px-3.5 text-center whitespace-nowrap">Thời Gian</th>
+              <tr className="bg-slate-50/90 dark:bg-zinc-800/90 print:bg-slate-100 text-[11px] font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-wider border-b border-slate-200 dark:border-zinc-700">
+                <th className="py-3.5 px-3 w-12 text-center font-bold">STT</th>
+                <th className="py-3.5 px-4 min-w-[170px]">Người Bệnh</th>
+                <th className="py-3.5 px-3 min-w-[130px]">Định Danh / Thẻ</th>
+                <th className="py-3.5 px-4 min-w-[190px]">Khoa Phòng Tiếp Nhận</th>
+                <th className="py-3.5 px-3 text-center w-28">Tổng Điểm</th>
+                <th className="py-3.5 px-4 min-w-[240px]">Tiêu Chí & Góp Ý</th>
+                <th className="py-3.5 px-3 text-center whitespace-nowrap w-28">Thời Gian</th>
                 <th className="py-3.5 px-4 text-center w-28 print:hidden">Thao Tác</th>
               </tr>
             </thead>
@@ -1309,6 +1326,16 @@ export function PatientReviewsHistory({
           </div>
         );
       })()}
+
+      {/* Modal Thêm Đánh Giá / Khảo Sát Mới */}
+      {onAddReview && (
+        <AdminAddReviewModal
+          isOpen={showAddReviewModal}
+          onClose={() => setShowAddReviewModal(false)}
+          departments={departments}
+          onSubmitReview={onAddReview}
+        />
+      )}
 
     </div>
   );
