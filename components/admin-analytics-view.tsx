@@ -13,7 +13,6 @@ import {
   Cell,
   LineChart,
   Line,
-  Legend
 } from 'recharts';
 import {
   TrendingUp,
@@ -25,10 +24,8 @@ import {
   Download,
   Printer,
   Calendar,
-  Filter,
   ArrowUpRight,
   ShieldCheck,
-  Clock,
   BarChart3,
   ThumbsUp,
   ThumbsDown,
@@ -40,7 +37,6 @@ import {
   User,
   FileText,
   CreditCard,
-  MessageSquare
 } from 'lucide-react';
 
 interface AdminAnalyticsViewProps {
@@ -60,6 +56,8 @@ export function AdminAnalyticsView({
   const [selectedDeptId, setSelectedDeptId] = useState<string>('all');
   const [cardFilter, setCardFilter] = useState<'all' | 'verified' | 'anonymous'>('all');
   const [rankingTab, setRankingTab] = useState<'all' | 'top' | 'needs_attention'>('all');
+  // State mở modal chi tiết cho từng thẻ KPI tổng quan
+  const [activeKpiModal, setActiveKpiModal] = useState<'total' | 'rating' | 'csat' | 'verified' | null>(null);
 
   // Bộ lọc và tìm kiếm riêng cho danh sách chi tiết lượt đánh giá
   const [reviewSearch, setReviewSearch] = useState('');
@@ -143,10 +141,6 @@ export function AdminAnalyticsView({
 
   const positiveReviews = filteredReviews.filter((r) => r.overallRating >= 4).length;
   const csatScore = totalRev > 0 ? Math.round((positiveReviews / totalRev) * 100) : 0;
-  
-  const promoterCount = filteredReviews.filter((r) => r.overallRating === 5).length;
-  const detractorCount = filteredReviews.filter((r) => r.overallRating <= 3).length;
-  const npsScore = totalRev > 0 ? Math.round(((promoterCount - detractorCount) / totalRev) * 100) : 0;
 
   // 4 Tiêu chí cốt lõi của Bộ Y Tế
   const criteriaStats = useMemo(() => {
@@ -187,11 +181,11 @@ export function AdminAnalyticsView({
   // Dữ liệu phân bố số sao (1 đến 5)
   const ratingDistributionData = useMemo(() => {
     return [
-      { name: '5 Sao (Rất tốt)', count: filteredReviews.filter((r) => r.overallRating === 5).length, fill: '#10b981' },
-      { name: '4 Sao (Hài lòng)', count: filteredReviews.filter((r) => r.overallRating === 4).length, fill: '#0ea5e9' },
-      { name: '3 Sao (Bình thường)', count: filteredReviews.filter((r) => r.overallRating === 3).length, fill: '#f59e0b' },
-      { name: '2 Sao (Chưa hài lòng)', count: filteredReviews.filter((r) => r.overallRating === 2).length, fill: '#f97316' },
-      { name: '1 Sao (Thất vọng)', count: filteredReviews.filter((r) => r.overallRating === 1).length, fill: '#ef4444' },
+      { name: '5 Sao', count: filteredReviews.filter((r) => r.overallRating === 5).length, fill: '#10b981' },
+      { name: '4 Sao', count: filteredReviews.filter((r) => r.overallRating === 4).length, fill: '#0ea5e9' },
+      { name: '3 Sao', count: filteredReviews.filter((r) => r.overallRating === 3).length, fill: '#f59e0b' },
+      { name: '2 Sao', count: filteredReviews.filter((r) => r.overallRating === 2).length, fill: '#f97316' },
+      { name: '1 Sao', count: filteredReviews.filter((r) => r.overallRating === 1).length, fill: '#ef4444' },
     ];
   }, [filteredReviews]);
 
@@ -511,17 +505,24 @@ export function AdminAnalyticsView({
       </div>
 
       {/* ---------------------------------------------------------------------
-          CỤM 5 THẺ KPI TỔNG THỂ (EXECUTIVE KPI CARDS)
+          CỤM 4 THẺ KPI TỔNG THỂ (EXECUTIVE KPI CARDS)
       --------------------------------------------------------------------- */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      {/* ---------------------------------------------------------------------
+          CỤM 4 THẺ KPI TỔNG THỂ (EXECUTIVE KPI CARDS) - CÓ THỂ NHẤN ĐỂ XEM CHI TIẾT
+      --------------------------------------------------------------------- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* KPI 1: Tổng lượt đánh giá */}
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
+        <div 
+          onClick={() => setActiveKpiModal('total')}
+          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-teal-500 hover:shadow-md transition group select-none"
+          title="Nhấn để xem chi tiết phân bố lượt khảo sát"
+        >
           <div>
             <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
               Tổng Lượt Khảo Sát
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-zinc-100 mt-1">
+            <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-zinc-100 mt-1 group-hover:text-teal-600 transition-colors">
               {totalRev}
             </div>
           </div>
@@ -532,7 +533,11 @@ export function AdminAnalyticsView({
         </div>
 
         {/* KPI 2: Điểm TB Toàn Diện */}
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
+        <div 
+          onClick={() => setActiveKpiModal('rating')}
+          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-amber-500 hover:shadow-md transition group select-none"
+          title="Nhấn để xem chi tiết cơ cấu điểm trung bình"
+        >
           <div>
             <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
               Điểm TB Toàn Diện
@@ -548,7 +553,11 @@ export function AdminAnalyticsView({
         </div>
 
         {/* KPI 3: Chỉ số CSAT */}
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
+        <div 
+          onClick={() => setActiveKpiModal('csat')}
+          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-teal-500 hover:shadow-md transition group select-none"
+          title="Nhấn để xem chi tiết tỷ lệ hài lòng"
+        >
           <div>
             <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
               Tỷ Lệ Hài Lòng (CSAT)
@@ -563,7 +572,11 @@ export function AdminAnalyticsView({
         </div>
 
         {/* KPI 4: Tỷ lệ quét thẻ xác thực */}
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between">
+        <div 
+          onClick={() => setActiveKpiModal('verified')}
+          className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between cursor-pointer hover:border-blue-500 hover:shadow-md transition group select-none"
+          title="Nhấn để xem chi tiết cơ cấu xác thực thẻ chip"
+        >
           <div>
             <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
               Xác Thực CCCD / BHYT
@@ -574,21 +587,6 @@ export function AdminAnalyticsView({
           </div>
           <div className="mt-2 text-[10px] sm:text-xs text-blue-600/90 font-medium">
             {verifiedCount} lượt quét thẻ chip
-          </div>
-        </div>
-
-        {/* KPI 5: Chỉ số NPS */}
-        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1">
-          <div>
-            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider block">
-              Chỉ Số NPS Bệnh Viện
-            </span>
-            <div className={`text-2xl sm:text-3xl font-black mt-1 ${npsScore >= 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
-              +{npsScore}
-            </div>
-          </div>
-          <div className="mt-2 text-[10px] sm:text-xs text-slate-500 font-medium">
-            {npsScore >= 70 ? 'Mức độ tín nhiệm cao' : 'Khuyến nghị cải thiện'}
           </div>
         </div>
 
@@ -740,7 +738,7 @@ export function AdminAnalyticsView({
               <BarChart data={ratingDistributionData} layout="vertical" margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
                 <XAxis type="number" stroke="#888888" fontSize={11} />
-                <YAxis dataKey="name" type="category" stroke="#888888" fontSize={11} width={100} />
+                <YAxis dataKey="name" type="category" stroke="#888888" fontSize={11} width={65} />
                 <Tooltip formatter={(value: any) => [`${value} lượt`, 'Số lượng đánh giá']} />
                 <Bar dataKey="count" radius={[0, 6, 6, 0]}>
                   {ratingDistributionData.map((entry, index) => (
@@ -1213,20 +1211,26 @@ export function AdminAnalyticsView({
         const parsed = parseReviewContent(selectedReviewDetail.content || '');
         const r = selectedReviewDetail;
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-xl rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+          <div 
+            className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-300"
+            onClick={() => setSelectedReviewDetail(null)}
+          >
+            <div 
+              className="bg-white dark:bg-zinc-900 w-full max-w-xl sm:max-w-2xl h-full shadow-2xl border-l border-slate-200 dark:border-zinc-800 flex flex-col animate-in slide-in-from-right duration-300 ease-out"
+              onClick={(e) => e.stopPropagation()}
+            >
               
-              {/* Header Modal */}
-              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-800/40">
+              {/* Header Drawer */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-teal-800 text-white shrink-0">
                 <div className="flex items-center gap-2.5">
-                  <span className="p-2 rounded-xl bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300">
+                  <span className="p-2 rounded-xl bg-white/10 backdrop-blur-xs text-white">
                     <FileText className="w-5 h-5" />
                   </span>
                   <div>
-                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-zinc-100">
+                    <h3 className="font-extrabold text-sm sm:text-base text-white">
                       Chi Tiết Phiếu Đánh Giá Người Bệnh
                     </h3>
-                    <span className="text-[11px] text-slate-500 font-mono">
+                    <span className="text-[11px] text-teal-100 font-mono">
                       Mã phiếu: {r.id}
                     </span>
                   </div>
@@ -1234,7 +1238,8 @@ export function AdminAnalyticsView({
                 <button
                   type="button"
                   onClick={() => setSelectedReviewDetail(null)}
-                  className="p-1.5 rounded-xl hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  className="p-1.5 rounded-xl hover:bg-white/20 text-white transition cursor-pointer"
+                  title="Đóng (Esc)"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1243,16 +1248,17 @@ export function AdminAnalyticsView({
               {/* Body Modal (Cuộn được) */}
               <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
                 
-                {/* Khối thông tin bệnh nhân & thẻ xác thực */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-700/60 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-600 dark:text-zinc-400 text-[11px] uppercase tracking-wider">
-                      Thông Tin Người Đánh Giá:
+                {/* THẺ 1: HỒ SƠ ĐỊNH DANH NGƯỜI BỆNH */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-700/60 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-zinc-700/60">
+                    <span className="font-bold text-slate-700 dark:text-zinc-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-teal-600" />
+                      <span>Thông Tin Định Danh Người Bệnh</span>
                     </span>
                     {r.hasCardVerified || (!r.isAnonymous && r.cardNumber) ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300/60">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>ĐÃ QUÉT THẺ {(r.cardType || 'CHIP').toUpperCase()}</span>
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>ĐÃ QUÉT THẺ {(r.cardType || 'CCCD').toUpperCase()}</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 font-medium text-[10px]">
@@ -1261,18 +1267,18 @@ export function AdminAnalyticsView({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Họ và tên:</span>
-                      <strong className="text-slate-900 dark:text-zinc-100 text-sm font-bold">
+                      <span className="text-slate-400 block text-[11px]">Họ và tên người bệnh:</span>
+                      <strong className="text-slate-900 dark:text-zinc-100 text-sm font-extrabold">
                         {r.userName || 'Bệnh nhân ẩn danh'}
                       </strong>
                     </div>
 
                     {r.cardNumber && (
                       <div>
-                        <span className="text-slate-400 block text-[11px]">Số thẻ {r.cardType?.toUpperCase()}:</span>
-                        <strong className="font-mono text-slate-800 dark:text-zinc-200">
+                        <span className="text-slate-400 block text-[11px]">Số thẻ {(r.cardType || 'CCCD').toUpperCase()}:</span>
+                        <strong className="font-mono text-teal-700 dark:text-teal-400 text-sm font-bold">
                           {r.cardNumber}
                         </strong>
                       </div>
@@ -1281,92 +1287,127 @@ export function AdminAnalyticsView({
                     {r.patientDob && (
                       <div>
                         <span className="text-slate-400 block text-[11px]">Ngày sinh:</span>
-                        <span className="font-medium text-slate-700 dark:text-zinc-300">{r.patientDob}</span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">{r.patientDob}</span>
                       </div>
                     )}
 
                     {r.patientGender && (
                       <div>
                         <span className="text-slate-400 block text-[11px]">Giới tính:</span>
-                        <span className="font-medium text-slate-700 dark:text-zinc-300">{r.patientGender}</span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">{r.patientGender}</span>
                       </div>
                     )}
 
                     {r.patientAddress && (
                       <div className="sm:col-span-2">
-                        <span className="text-slate-400 block text-[11px]">Địa chỉ cư trú:</span>
-                        <span className="font-medium text-slate-700 dark:text-zinc-300">{r.patientAddress}</span>
+                        <span className="text-slate-400 block text-[11px]">Địa chỉ cư trú / Quê quán:</span>
+                        <span className="font-semibold text-slate-800 dark:text-zinc-200">{r.patientAddress}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Khoa phòng & Ngày khảo sát */}
-                <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/40 border border-slate-200/70 dark:border-zinc-700/50">
+                {/* THẺ 2: KHOA PHÒNG & THỜI GIAN TIẾP NHẬN */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/40 border border-slate-200/70 dark:border-zinc-700/50">
                   <div>
                     <span className="text-slate-400 block text-[11px]">Khoa phòng khảo sát:</span>
-                    <strong className="text-teal-700 dark:text-teal-400 font-bold text-sm">
+                    <strong className="text-teal-800 dark:text-teal-300 font-extrabold text-sm block mt-0.5">
                       {r.departmentName}
                     </strong>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[11px]">Thời gian gửi phiếu:</span>
-                    <span className="font-medium text-slate-700 dark:text-zinc-300">
+                    <span className="font-bold text-slate-700 dark:text-zinc-300 block mt-0.5">
                       {new Date(r.createdAt || r.visitDate).toLocaleString('vi-VN')}
                     </span>
                   </div>
                 </div>
 
-                {/* Điểm tổng và 4 tiêu chí cốt lõi */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-zinc-800">
-                    <span className="font-bold text-slate-700 dark:text-zinc-300 text-xs">
-                      Điểm Đánh Giá Trải Nghiệm:
+                {/* THẺ 3: ĐÁNH GIÁ 4 TRỤ CỘT CHẤT LƯỢNG */}
+                <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-zinc-800">
+                    <span className="font-bold text-slate-700 dark:text-zinc-300 text-xs uppercase tracking-wider">
+                      Kết Quả Đánh Giá Dịch Vụ:
                     </span>
-                    <div className="flex items-center gap-1 text-amber-500 font-black text-base">
-                      <span>★ {r.overallRating}.0 / 5.0</span>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 font-black text-sm border border-amber-200/60 dark:border-amber-800">
+                      <Star className="w-4 h-4 fill-current" />
+                      <span>{r.overallRating}.0 / 5.0</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60">
-                      <div className="flex justify-between font-semibold">
-                        <span>1. Thái độ phục vụ:</span>
-                        <span className="text-emerald-600 font-bold">★ {r.criteria?.serviceAttitude || r.overallRating}</span>
+                  {/* 4 Tiêu chí cốt lõi: Thiết kế thẻ trung tính, thanh lịch, chuẩn bệnh viện */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    
+                    {/* 1. Thái độ */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/60 flex items-center justify-between">
+                      <div>
+                        <span className="text-slate-400 dark:text-zinc-400 text-[11px] block font-medium">1. Thái độ phục vụ & Y đức</span>
+                        <span className="font-semibold text-slate-800 dark:text-zinc-200 text-xs">
+                          {r.criteria?.serviceAttitude >= 4 ? 'Tận tình, chu đáo' : r.criteria?.serviceAttitude === 3 ? 'Bình thường' : 'Chưa niềm nở'}
+                        </span>
                       </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400 font-bold text-xs border border-slate-200 dark:border-zinc-700 shadow-2xs">
+                        <Star className="w-3 h-3 fill-emerald-500 text-emerald-500" />
+                        <span>{r.criteria?.serviceAttitude || r.overallRating}</span>
+                      </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60">
-                      <div className="flex justify-between font-semibold">
-                        <span>2. Cơ sở vật chất:</span>
-                        <span className="text-blue-600 font-bold">★ {r.criteria?.facilities || r.overallRating}</span>
+
+                    {/* 2. Cơ sở vật chất */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/60 flex items-center justify-between">
+                      <div>
+                        <span className="text-slate-400 dark:text-zinc-400 text-[11px] block font-medium">2. Cơ sở vật chất & Thiết bị</span>
+                        <span className="font-semibold text-slate-800 dark:text-zinc-200 text-xs">
+                          {r.criteria?.facilities >= 4 ? 'Sạch sẽ, tiện nghi' : r.criteria?.facilities === 3 ? 'Tương đối đầy đủ' : 'Cần bảo trì'}
+                        </span>
                       </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400 font-bold text-xs border border-slate-200 dark:border-zinc-700 shadow-2xs">
+                        <Star className="w-3 h-3 fill-emerald-500 text-emerald-500" />
+                        <span>{r.criteria?.facilities || r.overallRating}</span>
+                      </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60">
-                      <div className="flex justify-between font-semibold">
-                        <span>3. Thời gian chờ:</span>
-                        <span className="text-amber-600 font-bold">★ {r.criteria?.waitTime || r.overallRating}</span>
+
+                    {/* 3. Thời gian chờ */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/60 flex items-center justify-between">
+                      <div>
+                        <span className="text-slate-400 dark:text-zinc-400 text-[11px] block font-medium">3. Thời gian tiếp nhận & chờ đợi</span>
+                        <span className="font-semibold text-slate-800 dark:text-zinc-200 text-xs">
+                          {r.criteria?.waitTime >= 4 ? 'Nhanh chóng, kịp thời' : r.criteria?.waitTime === 3 ? 'Chờ vừa phải' : 'Chờ đợi lâu'}
+                        </span>
                       </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400 font-bold text-xs border border-slate-200 dark:border-zinc-700 shadow-2xs">
+                        <Star className="w-3 h-3 fill-emerald-500 text-emerald-500" />
+                        <span>{r.criteria?.waitTime || r.overallRating}</span>
+                      </span>
                     </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60">
-                      <div className="flex justify-between font-semibold">
-                        <span>4. Viện phí & BHYT:</span>
-                        <span className="text-purple-600 font-bold">★ {r.criteria?.costTransparency || r.overallRating}</span>
+
+                    {/* 4. Viện phí & BHYT */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700/60 flex items-center justify-between">
+                      <div>
+                        <span className="text-slate-400 dark:text-zinc-400 text-[11px] block font-medium">4. Minh bạch viện phí & BHYT</span>
+                        <span className="font-semibold text-slate-800 dark:text-zinc-200 text-xs">
+                          {r.criteria?.costTransparency >= 4 ? 'Minh bạch, rõ ràng' : r.criteria?.costTransparency === 3 ? 'Đầy đủ phiếu thu' : 'Chưa rõ ràng'}
+                        </span>
                       </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-emerald-700 dark:text-emerald-400 font-bold text-xs border border-slate-200 dark:border-zinc-700 shadow-2xs">
+                        <Star className="w-3 h-3 fill-emerald-500 text-emerald-500" />
+                        <span>{r.criteria?.costTransparency || r.overallRating}</span>
+                      </span>
                     </div>
+
                   </div>
                 </div>
 
-                {/* Các tiêu chí đánh giá nhanh đã chọn */}
+                {/* THẺ 4: CÁC TIÊU CHÍ CHỌN NHANH */}
                 {parsed.tags.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="font-bold text-slate-700 dark:text-zinc-300 text-[11px] uppercase tracking-wider block">
+                  <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-zinc-800/40 border border-slate-200/80 dark:border-zinc-700/60 space-y-2">
+                    <span className="font-bold text-slate-600 dark:text-zinc-400 text-[11px] uppercase tracking-wider block">
                       Các Tiêu Chí Chọn Nhanh ({parsed.tags.length}):
                     </span>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2">
                       {parsed.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-200/80 font-bold text-xs"
+                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 font-medium text-xs shadow-2xs"
                         >
                           ✓ {tag}
                         </span>
@@ -1375,14 +1416,14 @@ export function AdminAnalyticsView({
                   </div>
                 )}
 
-                {/* Ý kiến đóng góp thêm của bệnh nhân */}
+                {/* THẺ 5: Ý KIẾN / GÓP Ý THÊM CỦA NGƯỜI BỆNH */}
                 {parsed.comment && (
-                  <div className="space-y-1.5">
-                    <span className="font-bold text-slate-700 dark:text-zinc-300 text-[11px] uppercase tracking-wider block">
-                      Ý Kiến / Góp Ý Thêm Của Người Bệnh:
+                  <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-zinc-800/40 border border-slate-200/80 dark:border-zinc-700/60 space-y-2">
+                    <span className="font-bold text-slate-600 dark:text-zinc-400 text-[11px] uppercase tracking-wider block">
+                      Ý Kiến / Lời Nhắn Gửi Của Người Bệnh:
                     </span>
-                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/70 text-slate-800 dark:text-zinc-200 leading-relaxed font-normal whitespace-pre-wrap">
-                      {parsed.comment}
+                    <div className="p-3.5 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-800 dark:text-zinc-200 leading-relaxed font-normal whitespace-pre-wrap text-xs shadow-2xs">
+                      &ldquo;{parsed.comment}&rdquo;
                     </div>
                   </div>
                 )}
@@ -1412,6 +1453,252 @@ export function AdminAnalyticsView({
           </div>
         );
       })()}
+
+      {/* ---------------------------------------------------------------------
+          DRAWER CHI TIẾT CHUYÊN SÂU KHI BẤM VÀO THẺ KPI (XỔ TỪ BÊN PHẢI RA)
+      --------------------------------------------------------------------- */}
+      {activeKpiModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-300"
+          onClick={() => setActiveKpiModal(null)}
+        >
+          <div 
+            className="bg-white dark:bg-zinc-900 w-full max-w-xl sm:max-w-2xl h-full shadow-2xl border-l border-slate-200 dark:border-zinc-800 flex flex-col animate-in slide-in-from-right duration-300 ease-out"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Drawer */}
+            <div className={`p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between text-white shrink-0 ${
+              activeKpiModal === 'total' ? 'bg-teal-700' :
+              activeKpiModal === 'rating' ? 'bg-amber-600' :
+              activeKpiModal === 'csat' ? 'bg-emerald-700' : 'bg-blue-700'
+            }`}>
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-xl bg-white/10 backdrop-blur-xs text-white">
+                  {activeKpiModal === 'total' && <Layers className="w-5 h-5" />}
+                  {activeKpiModal === 'rating' && <Star className="w-5 h-5" />}
+                  {activeKpiModal === 'csat' && <ThumbsUp className="w-5 h-5" />}
+                  {activeKpiModal === 'verified' && <ShieldCheck className="w-5 h-5" />}
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg leading-tight">
+                    {activeKpiModal === 'total' && 'Chi Tiết: Tổng Lượt Khảo Sát & Độ Phủ'}
+                    {activeKpiModal === 'rating' && 'Chi Tiết: Phân Tích Điểm TB Toàn Diện'}
+                    {activeKpiModal === 'csat' && 'Chi Tiết: Chỉ Số Hài Lòng Người Bệnh (CSAT)'}
+                    {activeKpiModal === 'verified' && 'Chi Tiết: Tỷ Lệ Xác Thực Thẻ CCCD / BHYT'}
+                  </h3>
+                  <span className="text-xs opacity-90">
+                    Dữ liệu phân tích theo bộ lọc hiện tại ({filteredReviews.length} lượt)
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveKpiModal(null)}
+                className="p-1.5 rounded-xl hover:bg-white/20 text-white transition cursor-pointer"
+                title="Đóng (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Nội dung chi tiết từng thẻ */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-5 text-xs">
+              
+              {/* === TAB 1: TỔNG LƯỢT KHẢO SÁT === */}
+              {activeKpiModal === 'total' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div className="p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80">
+                      <div className="text-[11px] text-teal-700 dark:text-teal-300 font-bold uppercase">Tổng Lượt Nhận Được</div>
+                      <div className="text-3xl font-black text-teal-800 dark:text-teal-200 mt-1">{totalRev}</div>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80">
+                      <div className="text-[11px] text-slate-500 font-bold uppercase">Khoa Nhận Khảo Sát</div>
+                      <div className="text-3xl font-black text-slate-800 dark:text-zinc-200 mt-1">
+                        {new Set(filteredReviews.map((r) => r.departmentId)).size} / {departments.length}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-zinc-200 text-xs mb-2">
+                      Top 5 Khoa Phòng Nhận Nhiều Đánh Giá Nhất:
+                    </h4>
+                    <div className="space-y-2">
+                      {departments
+                        .map((d) => ({
+                          dept: d,
+                          count: filteredReviews.filter((r) => r.departmentId === d.id).length
+                        }))
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, 5)
+                        .map((item, i) => (
+                          <div key={item.dept.id} className="p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-800/40 border border-slate-200/60 flex items-center justify-between">
+                            <span className="font-semibold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-700 text-[10px] font-bold flex items-center justify-center">
+                                {i + 1}
+                              </span>
+                              {item.dept.name}
+                            </span>
+                            <span className="font-bold text-teal-700 dark:text-teal-300">
+                              {item.count} lượt ({totalRev ? Math.round((item.count / totalRev) * 100) : 0}%)
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* === TAB 2: ĐIỂM TB TOÀN DIỆN === */}
+              {activeKpiModal === 'rating' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] text-amber-800 dark:text-amber-200 font-bold uppercase">Điểm Trung Bình Chung</div>
+                      <div className="text-3xl font-black text-amber-600 mt-0.5">★ {avgRating} / 5.0</div>
+                    </div>
+                    <span className="px-3 py-1 rounded-xl bg-amber-500 text-white font-extrabold text-xs">
+                      {parseFloat(avgRating) >= 4.5 ? 'Xuất sắc' : parseFloat(avgRating) >= 4.0 ? 'Tốt' : 'Trung bình'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-zinc-200 text-xs mb-2">
+                      Chi Tiết 4 Trụ Cột Thành Phần:
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between">
+                        <span className="font-semibold text-emerald-900">1. Thái độ phục vụ & Y đức</span>
+                        <span className="font-extrabold text-emerald-700 text-sm">★ {criteriaStats.serviceAttitude}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-center justify-between">
+                        <span className="font-semibold text-blue-900">2. Cơ sở vật chất & Tiện nghi</span>
+                        <span className="font-extrabold text-blue-700 text-sm">★ {criteriaStats.facilities}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between">
+                        <span className="font-semibold text-amber-900">3. Thời gian chờ đợi</span>
+                        <span className="font-extrabold text-amber-700 text-sm">★ {criteriaStats.waitTime}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200/80 flex items-center justify-between">
+                        <span className="font-semibold text-purple-900">4. Minh bạch viện phí & BHYT</span>
+                        <span className="font-extrabold text-purple-700 text-sm">★ {criteriaStats.costTransparency}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* === TAB 3: CSAT === */}
+              {activeKpiModal === 'csat' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] text-teal-800 dark:text-teal-200 font-bold uppercase">Chỉ Số CSAT Đạt</div>
+                      <div className="text-3xl font-black text-teal-600 mt-0.5">{csatScore}%</div>
+                    </div>
+                    <div className="text-right text-[11px] text-slate-500">
+                      <div>Mục tiêu Bộ Y tế: <strong>≥ 90%</strong></div>
+                      <div className={csatScore >= 90 ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold'}>
+                        {csatScore >= 90 ? '✓ Đạt chỉ tiêu' : '⚠ Cần nâng cao'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-zinc-200 text-xs mb-2">
+                      Cơ Cấu Mức Độ Hài Lòng:
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60 flex items-center justify-between">
+                        <span className="font-semibold text-emerald-700">★ Tích cực (4 - 5 Sao)</span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">
+                          {filteredReviews.filter((r) => r.overallRating >= 4).length} lượt ({csatScore}%)
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60 flex items-center justify-between">
+                        <span className="font-semibold text-amber-700">★ Trung tính (3 Sao)</span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">
+                          {filteredReviews.filter((r) => r.overallRating === 3).length} lượt ({totalRev ? Math.round((filteredReviews.filter((r) => r.overallRating === 3).length / totalRev) * 100) : 0}%)
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60 flex items-center justify-between">
+                        <span className="font-semibold text-rose-700">★ Chưa hài lòng (1 - 2 Sao)</span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">
+                          {filteredReviews.filter((r) => r.overallRating <= 2).length} lượt ({totalRev ? Math.round((filteredReviews.filter((r) => r.overallRating <= 2).length / totalRev) * 100) : 0}%)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* === TAB 4: XÁC THỰC THẺ === */}
+              {activeKpiModal === 'verified' && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-[11px] text-blue-800 dark:text-blue-200 font-bold uppercase">Tỷ Lệ Quét Thẻ Xác Thực</div>
+                      <div className="text-3xl font-black text-blue-600 mt-0.5">{verifiedRate}%</div>
+                    </div>
+                    <span className="px-3 py-1 rounded-xl bg-blue-600 text-white font-extrabold text-xs">
+                      {verifiedCount} / {totalRev} lượt
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-slate-800 dark:text-zinc-200 text-xs mb-2">
+                      Cơ Cấu Định Danh Người Bệnh:
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60 flex items-center justify-between">
+                        <span className="font-semibold text-emerald-700 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                          <span>Đã quét thẻ CCCD gắn chip</span>
+                        </span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">
+                          {filteredReviews.filter((r) => (r.cardType || '').toLowerCase().includes('cccd') || r.hasCardVerified).length} lượt
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60 flex items-center justify-between">
+                        <span className="font-semibold text-blue-700 flex items-center gap-1.5">
+                          <CreditCard className="w-4 h-4 text-blue-600" />
+                          <span>Thẻ BHYT</span>
+                        </span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">
+                          {filteredReviews.filter((r) => (r.cardType || '').toLowerCase().includes('bhyt')).length} lượt
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/60 flex items-center justify-between">
+                        <span className="font-semibold text-slate-500 flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-slate-400" />
+                          <span>Khảo sát ẩn danh (không quét thẻ)</span>
+                        </span>
+                        <span className="font-bold text-slate-800 dark:text-zinc-200">
+                          {filteredReviews.filter((r) => r.isAnonymous || !r.hasCardVerified).length} lượt ({100 - verifiedRate}%)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Footer Drawer */}
+            <div className="p-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end bg-slate-50/50 dark:bg-zinc-800/30">
+              <button
+                type="button"
+                onClick={() => setActiveKpiModal(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
