@@ -4,8 +4,7 @@ import React, { useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Role } from '@/types';
-import { ShieldAlert, LogIn, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

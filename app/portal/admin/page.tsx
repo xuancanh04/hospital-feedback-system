@@ -5,33 +5,15 @@ import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { useFeedback } from '@/context/feedback-context';
 import { Input, Select } from '@/components/ui/form-controls';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Cell,
-  LineChart,
-  Line,
-  Legend,
-} from 'recharts';
 import { 
   LayoutDashboard, 
   Users, 
   Trash2, 
   Plus, 
-  Star, 
-  TrendingUp,
   Award,
   Building2,
-  CheckCircle2,
   ShieldCheck,
   Search,
-  Filter,
-  Clock,
   Menu,
   X,
   ChevronRight,
@@ -39,31 +21,25 @@ import {
   BarChart3,
   PanelLeftClose,
   PanelLeftOpen,
-  LayoutGrid,
-  Table as TableIcon,
   Edit2,
   Shield,
-  Stethoscope,
   UserCheck,
   UserX,
   AlertTriangle,
   History,
   Tag,
-  LogOut,
-  User as UserIcon,
 } from 'lucide-react';
 import { ProtectedRoute } from '@/components/protected-route';
 import { AdminAnalyticsView } from '@/components/admin-analytics-view';
 import { PatientReviewsHistory } from '@/components/patient-reviews-history';
 import { AdminTagsConfigView } from '@/components/admin-tags-config-view';
+import { DepartmentRankingView } from '@/components/department-ranking-view';
 
 export default function AdminPortalPage() {
-  const { currentUser, users, createUserByAdmin, deleteUserByAdmin, toggleUserStatus, logout } = useAuth();
+  const { users, createUserByAdmin, deleteUserByAdmin, toggleUserStatus } = useAuth();
   const {
     reviews,
     departments,
-    positiveTags,
-    criticalTags,
     addReview,
     addDepartment,
     updateDepartment,
@@ -71,7 +47,8 @@ export default function AdminPortalPage() {
     updateReviewStatus,
   } = useFeedback();
 
-  const [activeTab, setActiveTab] = useState<'analytics' | 'reviews' | 'departments' | 'users' | 'tags'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'rankings' | 'reviews' | 'departments' | 'users' | 'tags'>('analytics');
+  const [selectedReviewsDeptId, setSelectedReviewsDeptId] = useState<string>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -115,56 +92,6 @@ export default function AdminPortalPage() {
     ) return 'ngoai';
     return 'noi';
   };
-
-  const totalReviews = reviews.length;
-  const pendingReviews = reviews.filter((r) => r.status === 'pending');
-  const approvedReviews = reviews.filter((r) => r.status === 'approved');
-  const rejectedReviews = reviews.filter((r) => r.status === 'rejected');
-
-  const avgRating = (
-    reviews.reduce((acc, cur) => acc + cur.overallRating, 0) / (totalReviews || 1)
-  ).toFixed(1);
-
-  const csat = Math.round(
-    (reviews.filter((r) => r.overallRating >= 4).length / (totalReviews || 1)) * 100
-  );
-
-  const ratingDistributionData = [
-    { name: '5 Sao', count: reviews.filter((r) => r.overallRating === 5).length, fill: '#10b981' },
-    { name: '4 Sao', count: reviews.filter((r) => r.overallRating === 4).length, fill: '#3b82f6' },
-    { name: '3 Sao', count: reviews.filter((r) => r.overallRating === 3).length, fill: '#f59e0b' },
-    { name: '2 Sao', count: reviews.filter((r) => r.overallRating === 2).length, fill: '#f97316' },
-    { name: '1 Sao', count: reviews.filter((r) => r.overallRating === 1).length, fill: '#ef4444' },
-  ];
-
-  const trendData = [
-    { month: 'T11/2025', csat: 91, reviews: 45 },
-    { month: 'T12/2025', csat: 93, reviews: 52 },
-    { month: 'T01/2026', csat: 92, reviews: 60 },
-    { month: 'T02/2026', csat: 95, reviews: 48 },
-    { month: 'T03/2026', csat: 94, reviews: 68 },
-    { month: 'T04/2026', csat: csat, reviews: totalReviews },
-  ];
-
-  const deptPerformanceData = useMemo(() => {
-    return departments.map((d) => {
-      const deptRev = reviews.filter((r) => r.departmentId === d.id);
-      const avg = deptRev.length
-        ? (deptRev.reduce((acc, c) => acc + c.overallRating, 0) / deptRev.length).toFixed(1)
-        : (d.averageRating || 4.8).toString();
-      return {
-        id: d.id,
-        code: d.code,
-        name: d.name,
-        category: getDeptCategory(d),
-        rating: parseFloat(avg),
-        reviews: deptRev.length,
-        doctorCount: d.doctorCount || 4,
-        note: d.note,
-        description: d.description,
-      };
-    }).sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
-  }, [departments, reviews]);
 
   const filteredDepartments = useMemo(() => {
     return departments.filter((d) => {
@@ -318,13 +245,7 @@ export default function AdminPortalPage() {
         >
           <div className="space-y-4">
             
-            <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-slate-100 dark:border-zinc-800">
-              {!isCollapsed && (
-                <div className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider truncate">
-                  Hạng Mục Quản Lý
-                </div>
-              )}
-              
+            <div className="flex items-center justify-end px-1 pb-1">
               <button
                 type="button"
                 onClick={() => setIsCollapsed(!isCollapsed)}
@@ -370,6 +291,27 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => {
+                  setActiveTab('rankings');
+                  if (window.innerWidth < 1024) setSidebarOpen(false);
+                }}
+                title="Xếp Hạng Khoa Phòng"
+                className={`w-full flex items-center ${
+                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-3.5 py-2.5'
+                } rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer group ${
+                  activeTab === 'rankings'
+                    ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25'
+                    : 'text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-zinc-800/60'
+                }`}
+              >
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+                  <Award className={`w-4 h-4 shrink-0 transition-colors ${activeTab === 'rankings' ? 'text-white' : 'text-amber-500 dark:text-amber-400 group-hover:text-amber-600'}`} />
+                  {!isCollapsed && <span>Xếp Hạng Khoa Phòng</span>}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setActiveTab('reviews');
                   if (window.innerWidth < 1024) setSidebarOpen(false);
                 }}
@@ -386,11 +328,6 @@ export default function AdminPortalPage() {
                   <History className={`w-4 h-4 shrink-0 transition-colors ${activeTab === 'reviews' ? 'text-white' : 'text-teal-600 dark:text-teal-400 group-hover:text-teal-700'}`} />
                   {!isCollapsed && <span>Lịch Sử Đánh Giá</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${activeTab === 'reviews' ? 'bg-emerald-700/80 text-emerald-100' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`}>
-                    {reviews.length}
-                  </span>
-                )}
               </button>
 
               <button
@@ -401,7 +338,7 @@ export default function AdminPortalPage() {
                 }}
                 title="Khoa Phòng"
                 className={`w-full flex items-center ${
-                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
+                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-3.5 py-2.5'
                 } rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer group ${
                   activeTab === 'departments'
                     ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25'
@@ -412,11 +349,6 @@ export default function AdminPortalPage() {
                   <Building2 className={`w-4 h-4 shrink-0 transition-colors ${activeTab === 'departments' ? 'text-white' : 'text-sky-600 dark:text-sky-400 group-hover:text-sky-700'}`} />
                   {!isCollapsed && <span>Khoa Phòng</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${activeTab === 'departments' ? 'bg-emerald-700/80 text-emerald-100' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`}>
-                    {departments.length}
-                  </span>
-                )}
               </button>
 
               <button
@@ -427,7 +359,7 @@ export default function AdminPortalPage() {
                 }}
                 title="Cấu Hình Thẻ Đánh Giá"
                 className={`w-full flex items-center ${
-                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
+                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-3.5 py-2.5'
                 } rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer group ${
                   activeTab === 'tags'
                     ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25'
@@ -438,11 +370,6 @@ export default function AdminPortalPage() {
                   <Tag className={`w-4 h-4 shrink-0 transition-colors ${activeTab === 'tags' ? 'text-white' : 'text-teal-600 dark:text-teal-400 group-hover:text-teal-700'}`} />
                   {!isCollapsed && <span>Cấu Hình Thẻ Khảo Sát</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${activeTab === 'tags' ? 'bg-emerald-700/80 text-emerald-100' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`}>
-                    {positiveTags.length + criticalTags.length}
-                  </span>
-                )}
               </button>
 
               <button
@@ -453,7 +380,7 @@ export default function AdminPortalPage() {
                 }}
                 title="Tài Khoản Quản Trị"
                 className={`w-full flex items-center ${
-                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-between px-3.5 py-2.5'
+                  isCollapsed ? 'justify-center px-2 py-3' : 'justify-start px-3.5 py-2.5'
                 } rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer group ${
                   activeTab === 'users'
                     ? 'bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25'
@@ -464,11 +391,6 @@ export default function AdminPortalPage() {
                   <Users className={`w-4 h-4 shrink-0 transition-colors ${activeTab === 'users' ? 'text-white' : 'text-amber-600 dark:text-amber-400 group-hover:text-amber-700'}`} />
                   {!isCollapsed && <span>Tài Khoản Quản Trị</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md ${activeTab === 'users' ? 'bg-emerald-700/80 text-emerald-100' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400'}`}>
-                    {filteredUsers.length}
-                  </span>
-                )}
               </button>
             </div>
           </div>
@@ -503,24 +425,14 @@ export default function AdminPortalPage() {
           {/* Tiêu Đề Trang Điều Hành */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80 dark:border-zinc-800">
             <div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#000080] dark:text-white tracking-tight uppercase">
+              <h1 className="text-base sm:text-lg font-bold text-[#000080] dark:text-white tracking-normal uppercase">
                 {activeTab === 'analytics' && 'Thống Kê & Báo Cáo Chất Lượng'}
+                {activeTab === 'rankings' && 'Bảng Xếp Hạng Chất Lượng Các Khoa Phòng'}
                 {activeTab === 'reviews' && 'Lịch Sử Đánh Giá Của Bệnh Nhân'}
                 {activeTab === 'departments' && 'Quản Lý Danh Sách Khoa Phòng'}
                 {activeTab === 'users' && 'Quản Lý Tài Khoản Quản Trị'}
                 {activeTab === 'tags' && 'Cấu Hình Thẻ Đánh Giá Nhanh Cho Bệnh Nhân'}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mt-1 flex items-center gap-2">
-                <span>Cổng giám sát điều hành thời gian thực</span>
-                <span>•</span>
-                <span className="font-semibold text-emerald-700 dark:text-emerald-400">Bệnh viện Quân y 7A</span>
-              </p>
-            </div>
-
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-300">
-              <span>CSAT Toàn Viện:</span>
-              <strong className="text-sm font-black text-emerald-700 dark:text-emerald-400">{avgRating}</strong>
-              <span className="text-slate-400">/ 5.0</span>
             </div>
           </div>
 
@@ -530,6 +442,21 @@ export default function AdminPortalPage() {
             departments={departments}
             getDeptCategory={getDeptCategory}
             onNavigateToReviews={() => setActiveTab('reviews')}
+            onNavigateToRankings={() => setActiveTab('rankings')}
+          />
+        )}
+
+        {activeTab === 'rankings' && (
+          <DepartmentRankingView
+            departments={departments}
+            reviews={reviews}
+            getDeptCategory={getDeptCategory}
+            onNavigateToReviews={(deptId) => {
+              if (deptId) {
+                setSelectedReviewsDeptId(deptId);
+              }
+              setActiveTab('reviews');
+            }}
           />
         )}
 
@@ -537,6 +464,7 @@ export default function AdminPortalPage() {
           <PatientReviewsHistory
             reviews={reviews}
             departments={departments}
+            initialDeptId={selectedReviewsDeptId}
             onUpdateStatus={updateReviewStatus}
             onAddReview={addReview}
           />
@@ -547,68 +475,39 @@ export default function AdminPortalPage() {
         )}
 
         {activeTab === 'departments' && (
-          <div className="space-y-5 animate-in fade-in duration-200">
-            
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 p-4 sm:p-5 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-emerald-600" />
-                    <span>Danh Sách Khoa Phòng Bệnh Viện</span>
-                  </h3>
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                    {filteredDepartments.length} khoa
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  
-                  <button
-                    type="button"
-                    onClick={openAddDeptModal}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Thêm Khoa Mới</span>
-                  </button>
-                </div>
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Thanh công cụ lọc, tìm kiếm và nút Thêm Khoa trực tiếp trên nền trang */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên hoặc mã khoa..."
+                  value={deptSearch}
+                  onChange={(e) => setDeptSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition shadow-2xs"
+                />
               </div>
 
-              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-zinc-800">
-                
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {[
-                    { id: 'all', label: `Tất Cả (${departments.length})` },
-                    { id: 'noi', label: `Khối Nội (${departments.filter((d) => getDeptCategory(d) === 'noi').length})` },
-                    { id: 'ngoai', label: `Khối Ngoại (${departments.filter((d) => getDeptCategory(d) === 'ngoai').length})` },
-                    { id: 'canlamsang', label: `Cận Lâm Sàng (${departments.filter((d) => getDeptCategory(d) === 'canlamsang').length})` },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setDeptFilterCategory(tab.id as any)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
-                        deptFilterCategory === tab.id
-                          ? 'bg-emerald-700 text-white shadow-xs'
-                          : 'bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
+              <Select
+                value={deptFilterCategory}
+                onChange={(e) => setDeptFilterCategory(e.target.value as 'all' | 'noi' | 'ngoai' | 'canlamsang')}
+                className="!h-8 !py-1 text-xs w-full sm:w-auto bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-2xs"
+              >
+                <option value="all">Tất Cả ({departments.length})</option>
+                <option value="noi">Khối Nội ({departments.filter((d) => getDeptCategory(d) === 'noi').length})</option>
+                <option value="ngoai">Khối Ngoại ({departments.filter((d) => getDeptCategory(d) === 'ngoai').length})</option>
+                <option value="canlamsang">Cận Lâm Sàng ({departments.filter((d) => getDeptCategory(d) === 'canlamsang').length})</option>
+              </Select>
 
-                <div className="relative w-full md:w-72 shrink-0">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Tìm theo tên khoa hoặc mã khoa..."
-                    value={deptSearch}
-                    onChange={(e) => setDeptSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 transition"
-                  />
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={openAddDeptModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm Khoa Mới</span>
+              </button>
             </div>
 
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
@@ -764,66 +663,42 @@ export default function AdminPortalPage() {
         )}
 
         {activeTab === 'users' && (
-          <div className="space-y-5 animate-in fade-in duration-200">
-            
-            <div className="bg-gradient-to-r from-purple-50 via-indigo-50 to-emerald-50 dark:from-purple-950/20 dark:to-zinc-900 p-4 sm:p-5 rounded-2xl border border-purple-200/80 dark:border-purple-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-purple-200 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-purple-600" />
-                  <span>Danh Sách Tài Khoản Quản Trị Hệ Thống (Admin)</span>
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-zinc-300 mt-1 leading-relaxed">
-                  Các tài khoản Quản Trị Viên có toàn quyền giám sát hệ thống, theo dõi thống kê CSAT, quản lý danh mục khoa phòng và phân quyền tài khoản điều hành.
-                </p>
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Thanh công cụ tìm kiếm, bộ lọc và nút Thêm trực tiếp trên nền trang */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên, email, chức danh..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-purple-600 transition shadow-2xs"
+                />
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-700 text-white shadow-sm">
-                  {filteredUsers.length} Quản Trị Viên
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowAddAdminModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Thêm Admin</span>
-                </button>
-              </div>
+
+              <Select
+                value={userStatusFilter}
+                onChange={(e) => setUserStatusFilter(e.target.value as 'all' | 'active' | 'suspended')}
+                className="!h-8 !py-1 text-xs w-full sm:w-auto bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-2xs"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="suspended">Đang tạm khóa</option>
+              </Select>
+
+              <button
+                type="button"
+                onClick={() => setShowAddAdminModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition cursor-pointer shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm Tài Khoản</span>
+              </button>
             </div>
 
+            {/* Bảng danh sách tài khoản độc lập */}
             <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs overflow-hidden">
-              
-              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-zinc-900/50">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-purple-600 shrink-0" />
-                    <span>Ban Quản Trị ({filteredUsers.length})</span>
-                  </h3>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="relative w-full sm:w-64">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      placeholder="Tìm theo tên, email, chức danh..."
-                      value={userSearch}
-                      onChange={(e) => setUserSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-purple-600 transition"
-                    />
-                  </div>
-
-                  <Select
-                    value={userStatusFilter}
-                    onChange={(e) => setUserStatusFilter(e.target.value as any)}
-                    className="!h-8 !py-1 text-xs w-full sm:w-auto"
-                  >
-                    <option value="all">Tất cả trạng thái</option>
-                    <option value="active">Đang hoạt động</option>
-                    <option value="suspended">Đang tạm khóa</option>
-                  </Select>
-                </div>
-              </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm min-w-[650px]">
@@ -869,9 +744,8 @@ export default function AdminPortalPage() {
                               {u.email}
                             </td>
                             <td className="py-3.5 px-4 whitespace-nowrap">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
-                                <Shield className="w-3 h-3" />
-                                Quản Trị Toàn Quyền
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/60">
+                                Admin
                               </span>
                             </td>
                             <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-600 dark:text-zinc-300 font-medium">
@@ -997,7 +871,7 @@ export default function AdminPortalPage() {
                   </label>
                   <Select
                     value={deptFormCategory}
-                    onChange={(e) => setDeptFormCategory(e.target.value as any)}
+                    onChange={(e) => setDeptFormCategory(e.target.value as 'noi' | 'ngoai' | 'canlamsang')}
                   >
                     <option value="noi">Khối Nội</option>
                     <option value="ngoai">Khối Ngoại & Chuyên khoa</option>
@@ -1019,19 +893,7 @@ export default function AdminPortalPage() {
                 />
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-700 text-xs text-slate-500 space-y-1">
-                <span className="font-bold text-slate-700 dark:text-zinc-300 block">Lưu ý quản trị:</span>
-                <p>Mã khoa và tên khoa sau khi lưu sẽ lập tức đồng bộ sang Kiosk và trang khảo sát bệnh nhân trực tuyến.</p>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddDeptModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer transition"
-                >
-                  Hủy Bỏ
-                </button>
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end mt-6">
                 <button
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
@@ -1057,7 +919,7 @@ export default function AdminPortalPage() {
             <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-900/70">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400 flex items-center justify-center">
-                  <Shield className="w-5 h-5" />
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-slate-900 dark:text-white">
@@ -1072,7 +934,7 @@ export default function AdminPortalPage() {
                 type="button"
                 onClick={() => setShowAddAdminModal(false)}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
-                title="Đóng bảng"
+                title="Đóng"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1144,24 +1006,12 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-800 text-xs text-purple-700 dark:text-purple-300 space-y-1">
-                <span className="font-bold block">Phân quyền: Quản trị viên</span>
-                <p>Tài khoản có quyền giám sát toàn bộ báo cáo phân tích, theo dõi đánh giá của bệnh nhân, và quản lý danh mục phòng ban.</p>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddAdminModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800 cursor-pointer transition"
-                >
-                  Hủy Bỏ
-                </button>
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end mt-6">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md cursor-pointer transition"
                 >
-                  Tạo Tài Khoản Admin
+                  Thêm
                 </button>
               </div>
             </form>

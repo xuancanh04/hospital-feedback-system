@@ -5,12 +5,10 @@ import {
   QrCode, 
   CreditCard, 
   Camera, 
-  CameraOff, 
   X, 
   CheckCircle2, 
   ShieldCheck, 
   Keyboard, 
-  User, 
   ArrowRight,
   ScanLine
 } from 'lucide-react';
