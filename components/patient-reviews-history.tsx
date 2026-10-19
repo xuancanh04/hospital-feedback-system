@@ -4,51 +4,55 @@ import React, { useState, useMemo } from 'react';
 import { Review, Department } from '@/types';
 import {
   Search,
-  Filter,
   Eye,
   Download,
   Printer,
-  Calendar,
   Building2,
   Star,
   ShieldCheck,
   User,
   CreditCard,
   MapPin,
-  CheckCircle2,
   X,
   ChevronLeft,
   ChevronRight,
-  ArrowUpDown,
   History,
-  Plus,
 } from 'lucide-react';
 import { AdminAddReviewModal } from './admin-add-review-modal';
 
 interface PatientReviewsHistoryProps {
   reviews: Review[];
   departments: Department[];
-  onUpdateStatus?: (reviewId: string, status: any) => void;
+  initialDeptId?: string;
+  onUpdateStatus?: (reviewId: string, status: Review['status']) => void;
   onAddReview?: (review: Omit<Review, 'id' | 'createdAt' | 'status' | 'likes'>) => Promise<void>;
 }
 
 export function PatientReviewsHistory({
   reviews,
   departments,
-  onUpdateStatus,
+  initialDeptId,
   onAddReview,
 }: PatientReviewsHistoryProps) {
   // Bộ lọc
   const [searchQuery, setSearchQuery] = useState('');
-  const [deptFilter, setDeptFilter] = useState('all');
+  const [deptFilter, setDeptFilter] = useState(initialDeptId || 'all');
   const [ratingFilter, setRatingFilter] = useState<number | 'all'>('all');
   const [authFilter, setAuthFilter] = useState<'all' | 'verified' | 'anonymous'>('all');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
+  const [timeFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
 
   // Phân trang
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  // Cập nhật khi initialDeptId thay đổi từ trang khác điều hướng sang
+  React.useEffect(() => {
+    if (initialDeptId) {
+      setDeptFilter(initialDeptId);
+      setCurrentPage(1);
+    }
+  }, [initialDeptId]);
 
   // Modal xem chi tiết bệnh nhân & đánh giá
   const [selectedPatientReview, setSelectedPatientReview] = useState<Review | null>(null);
@@ -562,79 +566,51 @@ export function PatientReviewsHistory({
     <div className="space-y-5 animate-in fade-in duration-300">
       
       {/* ---------------------------------------------------------------------
-          THANH TÌM KIẾM, BỘ LỌC & NÚT XUẤT DỮ LIỆU (Ẩn khi in ấn)
+          THANH TÌM KIẾM, BỘ LỌC & NÚT HÀNH ĐỘNG TRỰC TIẾP TRÊN NỀN TRANG (Ẩn khi in ấn)
       --------------------------------------------------------------------- */}
-      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-xs space-y-4 print:hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400">
-                <History className="w-5 h-5" />
-              </span>
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-zinc-100">
-                Bảng Lịch Sử Đánh Giá Của Bệnh Nhân
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
-              Ghi nhận toàn bộ lượt phản hồi, hồ sơ thẻ CCCD/BHYT và mức độ hài lòng theo thời gian thực
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
-            {onAddReview && (
-              <button
-                type="button"
-                onClick={() => setShowAddReviewModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs cursor-pointer transition active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Thêm Đánh Giá / Khảo Sát</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer transition active:scale-95"
-            >
-              <Download className="w-4 h-4" />
-              <span>Xuất Excel / CSV</span>
-            </button>
-            <button
-              type="button"
-              onClick={handlePrintTable}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold border border-slate-200 dark:border-zinc-700 cursor-pointer transition active:scale-95"
-            >
-              <Printer className="w-4 h-4" />
-              <span>In Danh Sách</span>
-            </button>
-          </div>
+      <div className="space-y-3 print:hidden">
+        {/* Hàng nút hành động */}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs cursor-pointer transition active:scale-95"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Xuất Excel / CSV</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePrintTable}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold border border-slate-200/80 dark:border-zinc-700 shadow-2xs cursor-pointer transition active:scale-95"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>In Danh Sách</span>
+          </button>
         </div>
 
         {/* Thanh công cụ tìm kiếm và lọc */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
           
           {/* Ô tìm kiếm */}
           <div className="sm:col-span-2 relative">
-            <label className="block text-[11px] font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider mb-1">
-              Tìm kiếm:
-            </label>
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Tên người bệnh, số thẻ CCCD, khoa phòng, nội dung..."
+                placeholder="Tìm theo tên người bệnh, CCCD, nội dung..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50/70 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none"
+                className="w-full pl-8 pr-8 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -644,16 +620,13 @@ export function PatientReviewsHistory({
 
           {/* Lọc theo khoa phòng */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider mb-1">
-              Khoa Phòng:
-            </label>
             <select
               value={deptFilter}
               onChange={(e) => {
                 setDeptFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50/70 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none truncate"
+              className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs truncate"
             >
               <option value="all">Tất cả khoa phòng ({departments.length})</option>
               {departments.map((d) => (
@@ -666,16 +639,13 @@ export function PatientReviewsHistory({
 
           {/* Lọc theo số sao */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider mb-1">
-              Mức Đánh Giá:
-            </label>
             <select
               value={ratingFilter}
               onChange={(e) => {
                 setRatingFilter(e.target.value === 'all' ? 'all' : Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50/70 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none"
+              className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs"
             >
               <option value="all">Tất cả mức sao</option>
               <option value="5">★ 5 Sao (Rất tốt)</option>
@@ -688,16 +658,13 @@ export function PatientReviewsHistory({
 
           {/* Lọc nguồn xác thực */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider mb-1">
-              Loại Đối Tượng:
-            </label>
             <select
               value={authFilter}
               onChange={(e) => {
-                setAuthFilter(e.target.value as any);
+                setAuthFilter(e.target.value as 'all' | 'verified' | 'anonymous');
                 setCurrentPage(1);
               }}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50/70 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none"
+              className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-medium focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs"
             >
               <option value="all">Tất cả đối tượng</option>
               <option value="verified">Đã quét CCCD / BHYT</option>
@@ -728,7 +695,7 @@ export function PatientReviewsHistory({
             <span className="text-slate-500">Sắp xếp:</span>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'highest' | 'lowest')}
               className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 font-semibold outline-none"
             >
               <option value="newest">Mới nhất trước</option>
@@ -1082,24 +1049,24 @@ export function PatientReviewsHistory({
             >
               
               {/* Header Drawer */}
-              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-teal-800 text-white shrink-0">
+              <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-900/70 shrink-0">
                 <div className="flex items-center gap-3">
-                  <span className="p-2.5 rounded-xl bg-white/10 backdrop-blur-xs">
-                    <User className="w-5 h-5 text-white" />
-                  </span>
+                  <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 dark:bg-teal-950/60 dark:text-teal-400 flex items-center justify-center">
+                    <User className="w-5 h-5" />
+                  </div>
                   <div>
-                    <h3 className="font-extrabold text-base sm:text-lg leading-tight">
+                    <h3 className="font-bold text-base text-slate-900 dark:text-white">
                       Hồ Sơ Chi Tiết & Phiếu Đánh Giá
                     </h3>
-                    <span className="text-xs text-teal-100 font-mono">
-                      Mã phiếu: {r.id} • {new Date(r.createdAt || r.visitDate).toLocaleString('vi-VN')}
-                    </span>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">
+                      Mã phiếu: <span className="font-mono text-teal-700 dark:text-teal-400 font-semibold">{r.id}</span> • {new Date(r.createdAt || r.visitDate).toLocaleString('vi-VN')}
+                    </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedPatientReview(null)}
-                  className="p-2 rounded-xl hover:bg-white/20 transition cursor-pointer text-white flex items-center gap-1 text-xs font-semibold"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
                   title="Đóng (Esc)"
                 >
                   <X className="w-5 h-5" />
@@ -1298,7 +1265,7 @@ export function PatientReviewsHistory({
               </div>
 
               {/* Footer Modal */}
-              <div className="p-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-800/30">
+              <div className="p-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-850">
                 <span className="text-[11px] text-slate-400">
                   Dữ liệu trích xuất từ CSDL Bệnh viện Quân y 7A
                 </span>
@@ -1307,7 +1274,7 @@ export function PatientReviewsHistory({
                   <button
                     type="button"
                     onClick={() => handlePrintSingleReview(r)}
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 text-xs font-bold border border-slate-200/80 dark:border-zinc-700 shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     <span>In Phiếu Này</span>
@@ -1315,9 +1282,9 @@ export function PatientReviewsHistory({
                   <button
                     type="button"
                     onClick={() => setSelectedPatientReview(null)}
-                    className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                    className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
                   >
-                    Đóng Lại
+                    Đóng
                   </button>
                 </div>
               </div>

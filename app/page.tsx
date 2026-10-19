@@ -6,19 +6,10 @@ import {
   Star, 
   Check, 
   CheckCircle2,
-  QrCode,
-  CreditCard,
-  ScanLine,
-  ShieldCheck,
-  UserCheck,
   X,
   ArrowLeft,
   ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  MousePointerClick,
-  Building2,
-  HeartHandshake
+  ChevronRight
 } from 'lucide-react';
 import { useFeedback } from '@/context/feedback-context';
 import { INITIAL_DEPARTMENTS } from '@/lib/mock-data';
@@ -382,7 +373,9 @@ export default function TouchMainApp() {
       {/* =========================================================================
           VÙNG TƯƠNG TÁC CHÍNH (Canh giữa hoàn hảo trên nền ảnh Kiosk xanh)
       ========================================================================= */}
-      <main className={`flex-1 flex items-center justify-center p-3 sm:p-5 lg:p-8 max-w-5xl xl:max-w-6xl mx-auto w-full overflow-y-auto ${
+      <main className={`flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8 ${
+        step === 2 ? 'max-w-7xl xl:max-w-[90rem]' : 'max-w-5xl xl:max-w-6xl'
+      } mx-auto w-full overflow-y-auto ${
         step > 1 && step < 4 ? 'pb-20 sm:pb-24' : ''
       }`}>
         
@@ -497,50 +490,50 @@ export default function TouchMainApp() {
 
         {/* ---------------------------------------------------------------------
             BƯỚC 2: CHỌN KHOA PHÒNG - DẠNG CÁC THANH TRẮNG NỔI BẬT TRÊN NỀN XANH
-            Tối ưu lưới 2 cột nhỏ gọn, vừa vặn tất cả các màn hình không cần cuộn lướt
+            Tràn đều màn hình, khoảng cách rộng rãi thoáng mắt, vừa vặn không bị chen chúc
         --------------------------------------------------------------------- */}
         {step === 2 && (
-          <div className="w-full space-y-3 sm:space-y-4 animate-in fade-in slide-in-from-bottom-5 duration-350 my-auto max-w-4xl lg:max-w-5xl mx-auto px-2 sm:px-4 pb-12 sm:pb-16">
+          <div className="w-full space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-350 my-auto max-w-6xl xl:max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 pb-14 sm:pb-20">
             {/* THANH TIẾN TRÌNH VÒNG TRÒN NỐI DÂY (CIRCULAR STEPPER) CAO CẤP */}
-            <div className="flex flex-col items-center space-y-2.5 max-w-lg mx-auto w-full">
+            <div className="flex flex-col items-center space-y-3.5 max-w-xl mx-auto w-full">
               {/* Cụm 2 Vòng tròn kết nối đường line phát sáng */}
-              <div className="flex items-center justify-center gap-3 sm:gap-4 w-full">
+              <div className="flex items-center justify-center gap-4 sm:gap-6 w-full">
                 {/* Node Vòng tròn 1: Đang thực hiện */}
-                <div className="flex items-center gap-2.5 bg-gradient-to-r from-sky-600/30 to-blue-600/30 border border-sky-400/50 backdrop-blur-md px-4 py-1.5 rounded-full shadow-lg shadow-sky-500/10">
+                <div className="flex items-center gap-3 bg-gradient-to-r from-sky-600/35 to-blue-600/35 border border-sky-400/60 backdrop-blur-md px-5 py-2 rounded-full shadow-lg shadow-sky-500/15">
                   <div className="relative flex items-center justify-center">
                     <span className="absolute -inset-1 rounded-full bg-sky-400/30 animate-ping" />
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 text-white flex items-center justify-center font-bold text-xs shadow-md">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 text-white flex items-center justify-center font-bold text-xs sm:text-sm shadow-md">
                       1
                     </div>
                   </div>
-                  <span className="text-xs sm:text-sm font-semibold text-white tracking-wide">
+                  <span className="text-xs sm:text-sm lg:text-base font-semibold text-white tracking-wide">
                     Chọn khoa phòng
                   </span>
                 </div>
 
                 {/* Đường nối giữa 2 vòng tròn */}
-                <div className="w-8 sm:w-12 h-0.5 bg-gradient-to-r from-sky-400/60 to-white/20 rounded-full" />
+                <div className="w-12 sm:w-16 h-0.5 bg-gradient-to-r from-sky-400/60 to-white/20 rounded-full" />
 
                 {/* Node Vòng tròn 2: Bước tiếp theo */}
-                <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full opacity-60">
-                  <div className="w-6 h-6 rounded-full bg-white/15 text-white/70 flex items-center justify-center font-medium text-xs">
+                <div className="flex items-center gap-3 bg-white/5 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full opacity-60">
+                  <div className="w-7 h-7 rounded-full bg-white/15 text-white/70 flex items-center justify-center font-medium text-xs sm:text-sm">
                     2
                   </div>
-                  <span className="text-xs sm:text-sm font-medium text-slate-300 tracking-wide">
+                  <span className="text-xs sm:text-sm lg:text-base font-medium text-slate-300 tracking-wide">
                     Chấm điểm sao
                   </span>
                 </div>
               </div>
 
               {/* Tiêu đề Khối & Lời chỉ dẫn */}
-              <div className="text-center space-y-1 pt-1">
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white drop-shadow-md tracking-tight uppercase">
+              <div className="text-center space-y-1.5 pt-2">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white drop-shadow-md tracking-normal uppercase">
                   {selectedCategory === 'noi' && 'KHỐI NỘI'}
                   {selectedCategory === 'ngoai' && 'KHỐI NGOẠI & CHUYÊN KHOA'}
                   {selectedCategory === 'canlamsang' && 'KHỐI CẬN LÂM SÀNG & HỖ TRỢ'}
                   {selectedCategory === 'all' && 'CHỌN KHOA PHÒNG'}
                 </h2>
-                <p className="text-sky-100/90 text-xs sm:text-sm font-normal tracking-wide max-w-2xl mx-auto">
+                <p className="text-sky-100/90 text-sm sm:text-base font-normal tracking-wide max-w-3xl mx-auto leading-relaxed">
                   {selectedCategory === 'canlamsang' 
                     ? 'Chạm chọn khoa xét nghiệm, chẩn đoán hoặc hậu cần bạn vừa sử dụng'
                     : selectedCategory === 'ngoai'
@@ -552,8 +545,8 @@ export default function TouchMainApp() {
               </div>
             </div>
 
-            {/* DANH SÁCH CÁC THẺ KHOA: LƯỚI 2 CỘT NHỎ GỌN, KHOẢNG CÁCH THOÁNG ĐẸP */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:gap-6 w-full">
+            {/* DANH SÁCH CÁC THẺ KHOA: LƯỚI TRÀN ĐỀU MÀN HÌNH, KHOẢNG CÁCH RỘNG RÃI THOÁNG MẮT */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-7 w-full pt-2">
               {departmentsToRender.map((dept) => {
                 return (
                   <button
@@ -566,9 +559,9 @@ export default function TouchMainApp() {
                       setComment('');
                       setStep(3);
                     }}
-                    className="w-full min-h-[52px] sm:min-h-[58px] lg:min-h-[62px] py-3.5 sm:py-4 px-4 sm:px-5 rounded-xl border border-slate-200 border-b-2 sm:border-b-3 border-b-slate-300 text-center transition-all active:scale-[0.99] flex items-center justify-center cursor-pointer shadow-md bg-white hover:bg-slate-50 text-slate-800"
+                    className="w-full min-h-[58px] sm:min-h-[66px] lg:min-h-[72px] py-4 sm:py-5 px-5 sm:px-7 rounded-2xl border border-slate-200 text-center transition-all active:scale-[0.99] flex items-center justify-center cursor-pointer shadow-md hover:shadow-lg bg-white hover:bg-slate-50 text-slate-800"
                   >
-                    <div className="font-medium sm:font-semibold text-xs sm:text-sm lg:text-base leading-snug uppercase tracking-normal text-center">
+                    <div className="font-semibold sm:font-bold text-sm sm:text-base lg:text-lg leading-snug uppercase tracking-wide text-center text-slate-800">
                       {dept.name}
                     </div>
                   </button>
@@ -582,7 +575,7 @@ export default function TouchMainApp() {
             BƯỚC 3: CHẤM ĐIỂM SAO & CHỌN THẺ ĐÁNH GIÁ NHANH
         --------------------------------------------------------------------- */}
         {step === 3 && (
-          <div className="w-full space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-bottom-5 duration-350 my-auto max-w-2xl mx-auto">
+          <div className="w-full space-y-5 sm:space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-350 my-auto max-w-5xl lg:max-w-6xl mx-auto px-4 sm:px-8">
             {/* THANH TIẾN TRÌNH VÒNG TRÒN NỐI DÂY (CIRCULAR STEPPER) CAO CẤP */}
             <div className="flex flex-col items-center space-y-2.5 max-w-lg mx-auto w-full">
               {/* Cụm 2 Vòng tròn kết nối đường line phát sáng */}
@@ -688,13 +681,13 @@ export default function TouchMainApp() {
               const displayedTags = currentTagList.slice(startIdx, startIdx + TAGS_PER_PAGE);
 
               return (
-                <div className={`space-y-2.5 max-w-xl mx-auto w-full transition-all duration-300 ${
+                <div className={`space-y-3 max-w-3xl lg:max-w-4xl mx-auto w-full transition-all duration-300 ${
                   rating === 0 
                     ? 'opacity-35 pointer-events-none select-none filter blur-[0.4px]' 
                     : 'opacity-100 pointer-events-auto animate-in fade-in duration-300'
                 }`}>
                   <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white drop-shadow-xs">
+                    <div className="flex items-center gap-1.5 text-xs sm:text-sm lg:text-base font-semibold text-white drop-shadow-xs">
                       {rating === 0 ? (
                         <span className="text-sky-200/80 font-normal italic">
                           (Chọn số sao ở trên để mở khóa các tiêu chí đánh giá nhanh)
@@ -708,7 +701,7 @@ export default function TouchMainApp() {
 
                     {/* Phân trang (Trang 1/2) nếu danh sách nhiều mục */}
                     {totalPages > 1 && (
-                      <div className="flex items-center gap-1.5 text-xs text-sky-200 font-medium bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-xs">
+                      <div className="flex items-center gap-1.5 text-xs text-sky-200 font-medium bg-white/10 px-3 py-1 rounded-full backdrop-blur-xs">
                         <span>Trang {safePage + 1}/{totalPages}</span>
                         <div className="flex items-center gap-0.5 ml-1">
                           <button
@@ -734,8 +727,8 @@ export default function TouchMainApp() {
                     )}
                   </div>
 
-                  {/* Lưới các thẻ phản hồi theo trang */}
-                  <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                  {/* Lưới các thẻ phản hồi: Tràn đều, thoáng rộng, nền trắng sạch không ám xanh dưới đáy */}
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-5 w-full">
                     {displayedTags.map((tag) => {
                       const isChecked = selectedTags.includes(tag);
                       return (
@@ -743,18 +736,18 @@ export default function TouchMainApp() {
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(tag)}
-                          className={`w-full min-h-[44px] sm:min-h-[48px] px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xs cursor-pointer border text-center select-none ${
+                          className={`w-full min-h-[50px] sm:min-h-[56px] lg:min-h-[60px] px-4 sm:px-6 py-3 rounded-2xl font-semibold text-xs sm:text-sm lg:text-base transition-all active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer text-center select-none ${
                             isChecked
-                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/30 font-semibold'
-                              : 'bg-white/95 hover:bg-white text-slate-700 hover:text-slate-900 border-slate-200/90'
+                              ? 'bg-emerald-600 text-white border border-emerald-500 shadow-md font-bold'
+                              : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-md hover:shadow-lg'
                           }`}
                         >
                           {isChecked ? (
-                            <Check className="w-4 h-4 text-white stroke-[2.5] shrink-0 animate-in zoom-in-75 duration-200" />
+                            <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white stroke-[2.5] shrink-0 animate-in zoom-in-75 duration-200" />
                           ) : (
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
+                            <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0"></span>
                           )}
-                          <span className="leading-snug truncate">{tag}</span>
+                          <span className="leading-snug">{tag}</span>
                         </button>
                       );
                     })}
