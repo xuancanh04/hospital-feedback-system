@@ -14,19 +14,21 @@ import {
   AlertCircle,
   Star,
   ClipboardCheck,
-  Info
+  Info,
+  Sparkles
 } from 'lucide-react';
 
 export default function FeedbackPage() {
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { departments, addReview } = useFeedback();
+  const { departments, addReview, positiveTags, criticalTags } = useFeedback();
 
   // Form State
   const [departmentId, setDepartmentId] = useState(departments[0]?.id || '');
   const [visitDate, setVisitDate] = useState('');
   const [maxDate, setMaxDate] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [selectedQuickTags, setSelectedQuickTags] = useState<string[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -72,6 +74,12 @@ export default function FeedbackPage() {
     const effectiveUserName = isAnonymous ? 'Bệnh nhân ẩn danh' : (currentUser?.name || 'Bệnh nhân');
     const effectiveUserAvatar = isAnonymous ? undefined : currentUser?.avatar;
 
+    let finalContent = '';
+    if (selectedQuickTags.length > 0) {
+      finalContent += `[Đánh giá nhanh]: ${selectedQuickTags.join(', ')}\n\n`;
+    }
+    finalContent += `[Ý kiến thêm]: ${content.trim()}`;
+
     addReview({
       userId: effectiveUserId,
       userName: effectiveUserName,
@@ -87,7 +95,7 @@ export default function FeedbackPage() {
         costTransparency,
       },
       title,
-      content,
+      content: finalContent,
       images: images.length > 0 ? images : undefined,
       visitDate,
     });
@@ -267,6 +275,38 @@ export default function FeedbackPage() {
             <Info className="w-5 h-5 text-blue-600" />
             3. Nội Dung Nhận Xét & Hình Ảnh
           </h3>
+
+          {/* Khối Thẻ Đánh Giá Nhanh Đồng Bộ Từ Cấu Hình Admin */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/80">
+            <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-teal-600" />
+              <span>Tiêu chí đánh giá nhanh ({overallRating >= 4 ? 'Khen ngợi' : 'Góp ý / Cần cải thiện'}):</span>
+            </label>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {(overallRating >= 4 ? positiveTags : criticalTags).map((tag) => {
+                const isSelected = selectedQuickTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      setSelectedQuickTags((prev) =>
+                        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                      );
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                      isSelected
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-2xs'
+                        : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:border-teal-400'
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : '+ '}
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div>
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
