@@ -526,12 +526,6 @@ export function AdminAnalyticsView({
                 Chỉ số tổng hợp tự động từ mức sao khảo sát & thẻ phản hồi của người bệnh tại Kiosk (Thang điểm 5.0)
               </p>
             </div>
-            {criteriaStats.lowestKey === 'waitTime' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/70 dark:border-amber-800/60 text-xs font-semibold self-start sm:self-auto">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                <span>Thời gian chờ đợi cần chú trọng cải thiện</span>
-              </span>
-            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -1255,16 +1249,65 @@ export function AdminAnalyticsView({
                     const parsed = parseReviewContent(r.content || '');
                     const tagsStr = parsed.tags.join(' ').toLowerCase();
                     if (critKey === 'serviceAttitude') {
-                      return tagsStr.includes('bác sĩ') || tagsStr.includes('y tá') || tagsStr.includes('thái độ') || tagsStr.includes('niềm nở') || tagsStr.includes('tận tình');
+                      return (
+                        tagsStr.includes('bác sĩ') ||
+                        tagsStr.includes('y tá') ||
+                        tagsStr.includes('điều dưỡng') ||
+                        tagsStr.includes('thái độ') ||
+                        tagsStr.includes('niềm nở') ||
+                        tagsStr.includes('tận tình') ||
+                        tagsStr.includes('tiếp đón') ||
+                        tagsStr.includes('bảo vệ') ||
+                        tagsStr.includes('nhân viên') ||
+                        tagsStr.includes('lấy máu') ||
+                        tagsStr.includes('chẩn đoán') ||
+                        tagsStr.includes('y đức')
+                      );
                     }
                     if (critKey === 'facilities') {
-                      return tagsStr.includes('cơ sở') || tagsStr.includes('vệ sinh') || tagsStr.includes('phòng') || tagsStr.includes('thiết bị') || tagsStr.includes('nhà xe');
+                      return (
+                        tagsStr.includes('cơ sở') ||
+                        tagsStr.includes('trang thiết bị') ||
+                        tagsStr.includes('vệ sinh') ||
+                        tagsStr.includes('phòng') ||
+                        tagsStr.includes('thiết bị') ||
+                        tagsStr.includes('nhà xe') ||
+                        tagsStr.includes('máy lạnh') ||
+                        tagsStr.includes('quạt') ||
+                        tagsStr.includes('thang máy') ||
+                        tagsStr.includes('wifi') ||
+                        tagsStr.includes('nước uống') ||
+                        tagsStr.includes('cây xanh') ||
+                        tagsStr.includes('cơm viện') ||
+                        tagsStr.includes('ghế ngồi') ||
+                        tagsStr.includes('loa thông báo') ||
+                        tagsStr.includes('chụp x-quang') ||
+                        tagsStr.includes('môi trường')
+                      );
                     }
                     if (critKey === 'waitTime') {
-                      return tagsStr.includes('chờ') || tagsStr.includes('thời gian') || tagsStr.includes('thủ tục') || tagsStr.includes('nhanh chóng');
+                      return (
+                        tagsStr.includes('chờ') ||
+                        tagsStr.includes('thời gian') ||
+                        tagsStr.includes('thủ tục') ||
+                        tagsStr.includes('gọi số') ||
+                        tagsStr.includes('nhanh chóng') ||
+                        tagsStr.includes('kịp thời') ||
+                        tagsStr.includes('trễ giờ') ||
+                        tagsStr.includes('phát thuốc') ||
+                        tagsStr.includes('trả kết quả') ||
+                        tagsStr.includes('bảng chỉ dẫn')
+                      );
                     }
                     if (critKey === 'costTransparency') {
-                      return tagsStr.includes('chi phí') || tagsStr.includes('viện phí') || tagsStr.includes('giá') || tagsStr.includes('minh bạch');
+                      return (
+                        tagsStr.includes('chi phí') ||
+                        tagsStr.includes('viện phí') ||
+                        tagsStr.includes('bhyt') ||
+                        tagsStr.includes('thu phí') ||
+                        tagsStr.includes('quầy thanh toán') ||
+                        tagsStr.includes('minh bạch')
+                      );
                     }
                     return true;
                   });

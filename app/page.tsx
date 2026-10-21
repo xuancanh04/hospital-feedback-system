@@ -15,10 +15,8 @@ import { useFeedback } from '@/context/feedback-context';
 import { INITIAL_DEPARTMENTS } from '@/lib/mock-data';
 import { PatientCardInfo } from '@/types';
 
-const TAGS_PER_PAGE = 8;
-
 export default function TouchMainApp() {
-  const { departments, addReview, positiveTags, criticalTags } = useFeedback();
+  const { departments, addReview, positiveTags, neutralTags, criticalTags } = useFeedback();
 
   // 4 Bước: 1. Chào mừng -> 2. Chọn khoa -> 3. Chấm điểm & Thẻ nhanh -> 4. Cảm ơn
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -34,6 +32,35 @@ export default function TouchMainApp() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagPage, setTagPage] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
+
+  // Tự động thích ứng số lượng thẻ/trang: màn hình to hiển thị nhiều thẻ hơn (3 - 4 cột)
+  const [tagsPerPage, setTagsPerPage] = useState<number>(8);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      // Nếu màn hình rộng (Desktop / TV / Kiosk ngang)
+      if (width >= 1280) {
+        // 4 cột x 5 hàng = 20 thẻ (hiển thị trọn vẹn toàn bộ 20 thẻ trên 1 trang duy nhất)
+        setTagsPerPage(20);
+      } else if (width >= 1024) {
+        // 3 hoặc 4 cột x 4-5 hàng = 16 thẻ
+        setTagsPerPage(16);
+      } else if (width >= 768) {
+        // 3 cột x 4 hàng = 12 thẻ
+        setTagsPerPage(12);
+      } else {
+        // Màn hình nhỏ: 2 cột x 4 hàng = 8 thẻ
+        setTagsPerPage(8);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Danh sách khoa hiển thị: lấy danh sách đầy đủ đảm bảo đủ các khoa thuộc 3 khối
   const displayDepartments = departments.length >= INITIAL_DEPARTMENTS.length ? departments : INITIAL_DEPARTMENTS;
@@ -268,39 +295,97 @@ export default function TouchMainApp() {
     let waitTimeScore = rating;
     let costScore = rating;
 
-    selectedTags.forEach((tag) => {
+    // Helper phân loại chính xác tiêu chí Bộ Y Tế cho từng thẻ
+    const getTagCriterion = (tag: string): 'service' | 'facilities' | 'waitTime' | 'cost' => {
       const lower = tag.toLowerCase();
-      // Nhóm Thái độ & Y đức
-      if (lower.includes('bác sĩ') || lower.includes('y tá') || lower.includes('điều dưỡng') || lower.includes('thái độ') || lower.includes('niềm nở') || lower.includes('tận tình') || lower.includes('tiếp đón')) {
-        if (lower.includes('chưa') || lower.includes('gắt gỏng') || lower.includes('nhanh')) {
-          serviceScore = Math.max(1, serviceScore - 1);
-        } else {
-          serviceScore = Math.min(5, serviceScore + 1);
-        }
+
+      // 1. Viện phí & BHYT
+      if (
+        lower.includes('chi phí') ||
+        lower.includes('viện phí') ||
+        lower.includes('thu phí') ||
+        lower.includes('bhyt') ||
+        lower.includes('quầy thanh toán') ||
+        lower.includes('tiền')
+      ) {
+        return 'cost';
       }
-      // Nhóm Cơ sở vật chất
-      if (lower.includes('cơ sở') || lower.includes('vệ sinh') || lower.includes('phòng') || lower.includes('thiết bị') || lower.includes('nhà xe') || lower.includes('thoáng mát') || lower.includes('oi bức')) {
-        if (lower.includes('chưa sạch') || lower.includes('bẩn') || lower.includes('oi bức') || lower.includes('quá tải')) {
-          facilitiesScore = Math.max(1, facilitiesScore - 1);
-        } else {
-          facilitiesScore = Math.min(5, facilitiesScore + 1);
-        }
+
+      // 2. Thời gian tiếp nhận & Quy trình
+      if (
+        lower.includes('thời gian chờ') ||
+        lower.includes('chờ đợi') ||
+        lower.includes('gọi số') ||
+        lower.includes('thủ tục') ||
+        lower.includes('trễ giờ') ||
+        lower.includes('phát thuốc chậm') ||
+        lower.includes('trả kết quả') ||
+        lower.includes('kịp thời') ||
+        lower.includes('chen lấn') ||
+        lower.includes('bảng chỉ dẫn')
+      ) {
+        return 'waitTime';
       }
-      // Nhóm Thời gian chờ đợi & Quy trình
-      if (lower.includes('chờ') || lower.includes('thời gian') || lower.includes('thủ tục') || lower.includes('gọi số') || lower.includes('kịp thời') || lower.includes('nhanh chóng')) {
-        if (lower.includes('lâu') || lower.includes('rườm rà') || lower.includes('lỗi')) {
-          waitTimeScore = Math.max(1, waitTimeScore - 1);
-        } else {
-          waitTimeScore = Math.min(5, waitTimeScore + 1);
-        }
+
+      // 3. Cơ sở vật chất & Tiện nghi bệnh viện
+      if (
+        lower.includes('cơ sở vật chất') ||
+        lower.includes('trang thiết bị') ||
+        lower.includes('phòng bệnh') ||
+        lower.includes('phòng chờ') ||
+        lower.includes('vệ sinh') ||
+        lower.includes('máy lạnh') ||
+        lower.includes('quạt') ||
+        lower.includes('thang máy') ||
+        lower.includes('nhà xe') ||
+        lower.includes('wifi') ||
+        lower.includes('ghế ngồi') ||
+        lower.includes('nước uống') ||
+        lower.includes('cây xanh') ||
+        lower.includes('cơm viện') ||
+        lower.includes('môi trường') ||
+        lower.includes('loa thông báo') ||
+        lower.includes('an ninh') ||
+        lower.includes('chụp x-quang')
+      ) {
+        return 'facilities';
       }
-      // Nhóm Minh bạch viện phí
-      if (lower.includes('chi phí') || lower.includes('viện phí') || lower.includes('tiền') || lower.includes('giá') || lower.includes('phiếu thu')) {
-        if (lower.includes('chưa rõ') || lower.includes('cao')) {
-          costScore = Math.max(1, costScore - 1);
-        } else {
-          costScore = Math.min(5, costScore + 1);
-        }
+
+      // 4. Thái độ phục vụ & Y đức (Mặc định cho các thẻ về con người: Bác sĩ, Y tá, Cán bộ, Nhân viên, Bảo vệ...)
+      return 'service';
+    };
+
+    selectedTags.forEach((tag) => {
+      const crit = getTagCriterion(tag);
+      const lower = tag.toLowerCase();
+      // Nhận diện thẻ tiêu cực (1-2 sao) hoặc góp ý cải thiện (3 sao)
+      const isNegative =
+        lower.includes('chưa') ||
+        lower.includes('quá lâu') ||
+        lower.includes('gắt gỏng') ||
+        lower.includes('rườm rà') ||
+        lower.includes('vội vàng') ||
+        lower.includes('lỗi') ||
+        lower.includes('thiếu') ||
+        lower.includes('trễ') ||
+        lower.includes('hỏng') ||
+        lower.includes('kéo dài') ||
+        lower.includes('quá tải') ||
+        lower.includes('chậm') ||
+        lower.includes('ồn ào') ||
+        lower.includes('cần') ||
+        lower.includes('hơi') ||
+        lower.includes('oi bức') ||
+        lower.includes('đông');
+
+      if (crit === 'service') {
+        serviceScore = isNegative ? Math.max(1, serviceScore - 1) : Math.min(5, serviceScore + 1);
+      } else if (crit === 'facilities') {
+        facilitiesScore = isNegative ? Math.max(1, facilitiesScore - 1) : Math.min(5, facilitiesScore + 1);
+      } else if (crit === 'waitTime') {
+        waitTimeScore = isNegative ? Math.max(1, waitTimeScore - 1) : Math.min(5, waitTimeScore + 1);
+      } else if (crit === 'cost') {
+        costScore = isNegative ? Math.max(1, costScore - 1) : Math.min(5, costScore + 1);
       }
     });
 
@@ -416,7 +501,7 @@ export default function TouchMainApp() {
           VÙNG TƯƠNG TÁC CHÍNH (Canh giữa hoàn hảo trên nền ảnh Kiosk xanh)
       ========================================================================= */}
       <main className={`flex-1 flex items-center justify-center p-3 sm:p-6 lg:p-8 ${
-        step === 2 ? 'max-w-7xl xl:max-w-[90rem]' : 'max-w-5xl xl:max-w-6xl'
+        step === 2 || step === 3 ? 'max-w-7xl xl:max-w-[92rem]' : 'max-w-5xl xl:max-w-6xl'
       } mx-auto w-full overflow-y-auto ${
         step > 1 && step < 4 ? 'pb-20 sm:pb-24' : ''
       }`}>
@@ -712,18 +797,42 @@ export default function TouchMainApp() {
               )}
             </div>
 
-            {/* Khối Thẻ Đánh Giá Động Theo Số Sao (Khen Ngợi hoặc Góp Ý / Chê) có Phân Trang */}
+            {/* Khối Thẻ Đánh Giá Động Theo Từng Mức Số Sao: 4-5 Sao (Khen), 3 Sao (Góp ý nhẹ/Bình thường), 1-2 Sao (Phàn nàn) */}
             {(() => {
-              // Nếu 4 - 5 sao: Hiện thẻ khen ngợi. Nếu 1 - 3 sao: Hiện thẻ góp ý / phàn nàn. Mặc định là khen.
-              const isPositive = rating === 0 || rating >= 4;
-              const currentTagList = isPositive ? positiveTags : criticalTags;
-              const totalPages = Math.ceil((currentTagList.length || 1) / TAGS_PER_PAGE);
+              // Phân cấp thẻ chính xác theo mức độ hài lòng:
+              let currentTagList: string[] = [];
+              let tagHeading = '';
+
+              if (rating >= 4 || rating === 0) {
+                // 4 - 5 Sao: Khen ngợi
+                currentTagList = positiveTags;
+                tagHeading = 'Điểm bạn hài lòng và khen ngợi nhất (chọn nhanh):';
+              } else if (rating === 3) {
+                // 3 Sao: Bình thường / Đóng góp ý kiến
+                currentTagList = neutralTags && neutralTags.length > 0 ? neutralTags : [
+                  'Thời gian chờ đợi vừa phải',
+                  'Thủ tục giấy tờ cần tinh gọn hơn',
+                  'Bác sĩ tư vấn hơi nhanh',
+                  'Phòng chờ còn oi bức, ngột ngạt',
+                  'Bảng chỉ dẫn cần rõ ràng hơn',
+                  'Hệ thống gọi số cần cải thiện',
+                  'Nhà xe bệnh viện giờ cao điểm đông',
+                  'Cần tăng thêm bàn tiếp đón buổi sáng',
+                ];
+                tagHeading = 'Ý kiến đóng góp để bệnh viện phục vụ tốt hơn:';
+              } else {
+                // 1 - 2 Sao: Phàn nàn, cần cải thiện gấp
+                currentTagList = criticalTags;
+                tagHeading = 'Vấn đề khiến bạn chưa hài lòng (cần bệnh viện chấn chỉnh):';
+              }
+
+              const totalPages = Math.ceil((currentTagList.length || 1) / tagsPerPage);
               const safePage = Math.min(tagPage, Math.max(0, totalPages - 1));
-              const startIdx = safePage * TAGS_PER_PAGE;
-              const displayedTags = currentTagList.slice(startIdx, startIdx + TAGS_PER_PAGE);
+              const startIdx = safePage * tagsPerPage;
+              const displayedTags = currentTagList.slice(startIdx, startIdx + tagsPerPage);
 
               return (
-                <div className={`space-y-3 max-w-3xl lg:max-w-4xl mx-auto w-full transition-all duration-300 ${
+                <div className={`space-y-3 max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto w-full transition-all duration-300 ${
                   rating === 0 
                     ? 'opacity-35 pointer-events-none select-none filter blur-[0.4px]' 
                     : 'opacity-100 pointer-events-auto animate-in fade-in duration-300'
@@ -734,14 +843,12 @@ export default function TouchMainApp() {
                         <span className="text-sky-200/80 font-normal italic">
                           (Chọn số sao ở trên để mở khóa các tiêu chí đánh giá nhanh)
                         </span>
-                      ) : isPositive ? (
-                        <span>Điểm bạn hài lòng nhất (chọn nhanh):</span>
                       ) : (
-                        <span>Vấn đề bệnh viện cần cải thiện (chọn nhanh):</span>
+                        <span>{tagHeading}</span>
                       )}
                     </div>
 
-                    {/* Phân trang (Trang 1/2) nếu danh sách nhiều mục */}
+                    {/* Phân trang (Trang 1/2) nếu danh sách nhiều mục vượt quá sức chứa màn hình */}
                     {totalPages > 1 && (
                       <div className="flex items-center gap-1.5 text-xs text-sky-200 font-medium bg-white/10 px-3 py-1 rounded-full backdrop-blur-xs">
                         <span>Trang {safePage + 1}/{totalPages}</span>
@@ -769,33 +876,40 @@ export default function TouchMainApp() {
                     )}
                   </div>
 
-                  {/* Lưới các thẻ phản hồi: Tràn đều, thoáng rộng, nền trắng sạch không ám xanh dưới đáy */}
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:gap-5 w-full">
+                  {/* Lưới các thẻ phản hồi: 2 cột trên điện thoại, 3 cột trên tablet, 4 cột trên màn hình rộng */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5 lg:gap-4 w-full">
                     {displayedTags.map((tag) => {
                       const isChecked = selectedTags.includes(tag);
+                      const isLong = tag.length > 28;
+
                       return (
                         <button
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(tag)}
-                          className={`w-full min-h-[50px] sm:min-h-[56px] lg:min-h-[60px] px-4 sm:px-6 py-3 rounded-2xl font-semibold text-xs sm:text-sm lg:text-base transition-all active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer text-center select-none ${
+                          title={tag}
+                          className={`w-full h-[52px] sm:h-[58px] lg:h-[62px] px-3 sm:px-4 py-2 rounded-2xl font-semibold transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer text-center select-none overflow-hidden ${
+                            isLong 
+                              ? 'text-[11px] sm:text-xs lg:text-[13px] tracking-tight' 
+                              : 'text-xs sm:text-sm lg:text-[14px]'
+                          } ${
                             isChecked
                               ? 'bg-emerald-600 text-white border border-emerald-500 shadow-md font-bold'
                               : 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 shadow-md hover:shadow-lg'
                           }`}
                         >
                           {isChecked ? (
-                            <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white stroke-[2.5] shrink-0 animate-in zoom-in-75 duration-200" />
+                            <Check className="w-4 h-4 text-white stroke-[2.5] shrink-0 animate-in zoom-in-75 duration-200" />
                           ) : (
                             <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0"></span>
                           )}
-                          <span className="leading-snug">{tag}</span>
+                          <span className="line-clamp-2 leading-tight flex-1 text-center">
+                            {tag}
+                          </span>
                         </button>
                       );
                     })}
                   </div>
-
-                  {/* Đã bỏ 2 nút lớn phía dưới theo yêu cầu */}
                 </div>
               );
             })()}
