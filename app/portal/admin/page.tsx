@@ -22,7 +22,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Edit2,
-  Shield,
   UserCheck,
   UserX,
   AlertTriangle,

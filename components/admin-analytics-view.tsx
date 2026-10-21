@@ -54,6 +54,14 @@ export function AdminAnalyticsView({
   const [cardFilter, setCardFilter] = useState<'all' | 'verified' | 'anonymous'>('all');
   // State mở modal chi tiết cho từng thẻ KPI tổng quan
   const [activeKpiModal, setActiveKpiModal] = useState<'total' | 'rating' | 'csat' | 'verified' | null>(null);
+  // State mở modal chi tiết khi click vào các cột biểu đồ (Tiêu chí hoặc Mức sao)
+  const [selectedChartModal, setSelectedChartModal] = useState<{
+    type: 'criterion' | 'star';
+    key: string;
+    title: string;
+    scoreOrCount: string | number;
+    color: string;
+  } | null>(null);
 
 
 
@@ -143,21 +151,21 @@ export function AdminAnalyticsView({
   // Dữ liệu phân bố số sao (1 đến 5)
   const ratingDistributionData = useMemo(() => {
     return [
-      { name: '5 Sao', count: filteredReviews.filter((r) => r.overallRating === 5).length, fill: '#10b981' },
-      { name: '4 Sao', count: filteredReviews.filter((r) => r.overallRating === 4).length, fill: '#0ea5e9' },
-      { name: '3 Sao', count: filteredReviews.filter((r) => r.overallRating === 3).length, fill: '#f59e0b' },
-      { name: '2 Sao', count: filteredReviews.filter((r) => r.overallRating === 2).length, fill: '#f97316' },
-      { name: '1 Sao', count: filteredReviews.filter((r) => r.overallRating === 1).length, fill: '#ef4444' },
+      { name: '5 Sao', starValue: 5, count: filteredReviews.filter((r) => r.overallRating === 5).length, fill: '#10b981' },
+      { name: '4 Sao', starValue: 4, count: filteredReviews.filter((r) => r.overallRating === 4).length, fill: '#0ea5e9' },
+      { name: '3 Sao', starValue: 3, count: filteredReviews.filter((r) => r.overallRating === 3).length, fill: '#f59e0b' },
+      { name: '2 Sao', starValue: 2, count: filteredReviews.filter((r) => r.overallRating === 2).length, fill: '#f97316' },
+      { name: '1 Sao', starValue: 1, count: filteredReviews.filter((r) => r.overallRating === 1).length, fill: '#ef4444' },
     ];
   }, [filteredReviews]);
 
   // Biểu đồ so sánh 4 tiêu chí
   const criteriaChartData = useMemo(() => {
     return [
-      { name: 'Thái độ phục vụ', score: parseFloat(criteriaStats.serviceAttitude), fill: '#10b981' },
-      { name: 'Cơ sở vật chất', score: parseFloat(criteriaStats.facilities), fill: '#0ea5e9' },
-      { name: 'Thời gian chờ đợi', score: parseFloat(criteriaStats.waitTime), fill: '#f59e0b' },
-      { name: 'Minh bạch viện phí', score: parseFloat(criteriaStats.costTransparency), fill: '#8b5cf6' },
+      { name: 'Thái độ phục vụ', key: 'serviceAttitude', score: parseFloat(criteriaStats.serviceAttitude), fill: '#10b981' },
+      { name: 'Cơ sở vật chất', key: 'facilities', score: parseFloat(criteriaStats.facilities), fill: '#0ea5e9' },
+      { name: 'Thời gian chờ đợi', key: 'waitTime', score: parseFloat(criteriaStats.waitTime), fill: '#f59e0b' },
+      { name: 'Minh bạch viện phí', key: 'costTransparency', score: parseFloat(criteriaStats.costTransparency), fill: '#8b5cf6' },
     ];
   }, [criteriaStats]);
 
@@ -506,32 +514,36 @@ export function AdminAnalyticsView({
       --------------------------------------------------------------------- */}
       <div className="space-y-5 animate-in fade-in duration-200">
         
-        {/* PHÂN TÍCH 4 TIÊU CHÍ CỐT LÕI CỦA BỘ Y TẾ */}
+        {/* PHÂN TÍCH 4 TIÊU CHÍ CỐT LÕI CỦA BỘ Y TẾ DỰA TRÊN ĐÁNH GIÁ VÀ THẺ PHẢN HỒI */}
         <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-zinc-800 pb-3">
             <div>
               <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>Chấm Điểm 4 Trụ Cột Chất Lượng Dịch Vụ Khám Chữa Bệnh</span>
+                <span>Phân Tích 4 Trụ Cột Chất Lượng Dịch Vụ</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                Theo chuẩn Bộ Y tế: Thang điểm 5.0 • Càng cao thể hiện chất lượng phục vụ và sự hài lòng càng tốt
+                Chỉ số tổng hợp tự động từ mức sao khảo sát & thẻ phản hồi của người bệnh tại Kiosk (Thang điểm 5.0)
               </p>
             </div>
-            {criteriaStats.lowestKey === 'waitTime' && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/70 dark:border-amber-800/60 text-xs font-semibold self-start sm:self-auto">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                <span>Thời gian chờ đợi cần chú trọng cải thiện</span>
-              </span>
-            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             
             {/* Tiêu chí 1: Thái độ phục vụ */}
-            <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-zinc-800/50 border border-slate-200/70 dark:border-zinc-700/60 space-y-2 hover:border-emerald-300 dark:hover:border-emerald-700/60 transition-colors">
+            <div 
+              onClick={() => setSelectedChartModal({
+                type: 'criterion',
+                key: 'serviceAttitude',
+                title: '1. Thái Độ Phục Vụ & Y Đức',
+                scoreOrCount: `${criteriaStats.serviceAttitude} / 5.0★`,
+                color: '#10b981'
+              })}
+              className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-zinc-800/50 border border-slate-200/70 dark:border-zinc-700/60 space-y-2 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all cursor-pointer hover:shadow-xs group"
+              title="Nhấn để xem danh sách đánh giá về Thái độ & Y đức"
+            >
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-700 dark:text-zinc-300">1. Thái độ & Y đức</span>
+                <span className="font-bold text-slate-700 dark:text-zinc-300 group-hover:text-emerald-700">1. Thái độ & Y đức</span>
                 <span className="font-black text-emerald-600 text-sm">★ {criteriaStats.serviceAttitude}</span>
               </div>
               <div className="w-full bg-slate-200/80 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
@@ -547,9 +559,19 @@ export function AdminAnalyticsView({
             </div>
 
             {/* Tiêu chí 2: Cơ sở vật chất */}
-            <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-zinc-800/50 border border-slate-200/70 dark:border-zinc-700/60 space-y-2 hover:border-blue-300 dark:hover:border-blue-700/60 transition-colors">
+            <div 
+              onClick={() => setSelectedChartModal({
+                type: 'criterion',
+                key: 'facilities',
+                title: '2. Cơ Sở Vật Chất & Tiện Nghi',
+                scoreOrCount: `${criteriaStats.facilities} / 5.0★`,
+                color: '#0ea5e9'
+              })}
+              className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-zinc-800/50 border border-slate-200/70 dark:border-zinc-700/60 space-y-2 hover:border-blue-400 dark:hover:border-blue-600 transition-all cursor-pointer hover:shadow-xs group"
+              title="Nhấn để xem danh sách đánh giá về Cơ sở vật chất"
+            >
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-700 dark:text-zinc-300">2. Cơ sở vật chất</span>
+                <span className="font-bold text-slate-700 dark:text-zinc-300 group-hover:text-blue-700">2. Cơ sở vật chất</span>
                 <span className="font-black text-blue-600 text-sm">★ {criteriaStats.facilities}</span>
               </div>
               <div className="w-full bg-slate-200/80 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
@@ -565,13 +587,23 @@ export function AdminAnalyticsView({
             </div>
 
             {/* Tiêu chí 3: Thời gian chờ đợi */}
-            <div className={`p-3.5 rounded-xl border space-y-2 transition-colors ${
-              criteriaStats.lowestKey === 'waitTime' 
-                ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60' 
-                : 'bg-slate-50/70 dark:bg-zinc-800/50 border-slate-200/70 dark:border-zinc-700/60'
-            }`}>
+            <div 
+              onClick={() => setSelectedChartModal({
+                type: 'criterion',
+                key: 'waitTime',
+                title: '3. Thời Gian Chờ Đợi & Quy Trình Khám',
+                scoreOrCount: `${criteriaStats.waitTime} / 5.0★`,
+                color: '#f59e0b'
+              })}
+              className={`p-3.5 rounded-xl border space-y-2 transition-all cursor-pointer hover:shadow-xs group ${
+                criteriaStats.lowestKey === 'waitTime' 
+                  ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 hover:border-amber-400' 
+                  : 'bg-slate-50/70 dark:bg-zinc-800/50 border-slate-200/70 hover:border-amber-400'
+              }`}
+              title="Nhấn để xem danh sách đánh giá về Thời gian chờ"
+            >
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-700 dark:text-zinc-300">3. Thời gian chờ đợi</span>
+                <span className="font-bold text-slate-700 dark:text-zinc-300 group-hover:text-amber-700">3. Thời gian chờ đợi</span>
                 <span className="font-black text-amber-600 text-sm">★ {criteriaStats.waitTime}</span>
               </div>
               <div className="w-full bg-slate-200/80 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
@@ -587,9 +619,19 @@ export function AdminAnalyticsView({
             </div>
 
             {/* Tiêu chí 4: Minh bạch chi phí */}
-            <div className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-zinc-800/50 border border-slate-200/70 dark:border-zinc-700/60 space-y-2 hover:border-purple-300 dark:hover:border-purple-700/60 transition-colors">
+            <div 
+              onClick={() => setSelectedChartModal({
+                type: 'criterion',
+                key: 'costTransparency',
+                title: '4. Viện Phí & Minh Bạch BHYT',
+                scoreOrCount: `${criteriaStats.costTransparency} / 5.0★`,
+                color: '#8b5cf6'
+              })}
+              className="p-3.5 rounded-xl bg-slate-50/70 dark:bg-zinc-800/50 border border-slate-200/70 dark:border-zinc-700/60 space-y-2 hover:border-purple-400 dark:hover:border-purple-600 transition-all cursor-pointer hover:shadow-xs group"
+              title="Nhấn để xem danh sách đánh giá về Viện phí & BHYT"
+            >
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-700 dark:text-zinc-300">4. Viện phí & BHYT</span>
+                <span className="font-bold text-slate-700 dark:text-zinc-300 group-hover:text-purple-700">4. Viện phí & BHYT</span>
                 <span className="font-black text-purple-600 text-sm">★ {criteriaStats.costTransparency}</span>
               </div>
               <div className="w-full bg-slate-200/80 dark:bg-zinc-700 h-2 rounded-full overflow-hidden">
@@ -626,7 +668,7 @@ export function AdminAnalyticsView({
                 Mục tiêu ≥ 4.5★
               </span>
             </div>
-            <div className="h-64 w-full">
+            <div className="h-64 w-full cursor-pointer">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={criteriaChartData} margin={{ top: 10, right: 10, left: -20, bottom: 15 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -636,9 +678,25 @@ export function AdminAnalyticsView({
                     contentStyle={{ backgroundColor: '#0f172a', borderRadius: '10px', color: '#fff', border: 'none', fontSize: '12px' }}
                     formatter={(value) => [`${value} / 5.0★`, 'Điểm trung bình']} 
                   />
-                  <Bar dataKey="score" radius={[8, 8, 0, 0]} maxBarSize={48}>
+                  <Bar 
+                    dataKey="score" 
+                    radius={[8, 8, 0, 0]} 
+                    maxBarSize={48}
+                    onClick={(entry: any) => {
+                      if (entry && (entry.key || entry.name)) {
+                        const targetKey = String(entry.key || 'serviceAttitude');
+                        setSelectedChartModal({
+                          type: 'criterion',
+                          key: targetKey,
+                          title: String(entry.name || 'Tiêu chí'),
+                          scoreOrCount: `${entry.score ?? entry.value ?? 5} / 5.0★`,
+                          color: String(entry.fill || '#10b981'),
+                        });
+                      }
+                    }}
+                  >
                     {criteriaChartData.map((entry, index) => (
-                      <Cell key={`crit-cell-${index}`} fill={entry.fill} />
+                      <Cell key={`crit-cell-${index}`} fill={entry.fill} className="hover:opacity-80 transition cursor-pointer" />
                     ))}
                   </Bar>
                 </BarChart>
@@ -660,7 +718,7 @@ export function AdminAnalyticsView({
                 {csatScore}% Hài lòng
               </span>
             </div>
-            <div className="h-64 w-full">
+            <div className="h-64 w-full cursor-pointer">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={ratingDistributionData} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
@@ -668,11 +726,27 @@ export function AdminAnalyticsView({
                   <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={11} width={50} tickLine={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#0f172a', borderRadius: '10px', color: '#fff', border: 'none', fontSize: '12px' }}
-                    formatter={(value) => [`${value} lượt`, 'Số lượng đánh giá']} 
+                    formatter={(value) => [`${value} lượt (Nhấp để xem danh sách)`, 'Số lượng đánh giá']} 
                   />
-                  <Bar dataKey="count" radius={[0, 8, 8, 0]} maxBarSize={28}>
+                  <Bar 
+                    dataKey="count" 
+                    radius={[0, 8, 8, 0]} 
+                    maxBarSize={28}
+                    onClick={(entry: any) => {
+                      if (entry) {
+                        const starVal = entry.starValue ?? (entry.name ? parseInt(String(entry.name), 10) : 5);
+                        setSelectedChartModal({
+                          type: 'star',
+                          key: String(starVal),
+                          title: `Đánh Giá ${entry.name || `${starVal} Sao`}`,
+                          scoreOrCount: `${entry.count ?? entry.value ?? 0} lượt`,
+                          color: String(entry.fill || '#10b981'),
+                        });
+                      }
+                    }}
+                  >
                     {ratingDistributionData.map((entry, index) => (
-                      <Cell key={`bar-cell-${index}`} fill={entry.fill} />
+                      <Cell key={`bar-cell-${index}`} fill={entry.fill} className="hover:opacity-80 transition cursor-pointer" />
                     ))}
                   </Bar>
                 </BarChart>
@@ -1101,6 +1175,255 @@ export function AdminAnalyticsView({
                 type="button"
                 onClick={() => setActiveKpiModal(null)}
                 className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          DRAWER CHI TIẾT KHI CLICK VÀO CÁC CỘT BIỂU ĐỒ HOẶC THẺ TIÊU CHÍ (XỔ TỪ BÊN PHẢI SANG)
+      ========================================================================= */}
+      {selectedChartModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex justify-end animate-in fade-in duration-300"
+          onClick={() => setSelectedChartModal(null)}
+        >
+          <div 
+            className="bg-white dark:bg-zinc-900 w-full max-w-xl sm:max-w-2xl h-full shadow-2xl border-l border-slate-200 dark:border-zinc-800 flex flex-col animate-in slide-in-from-right duration-300 ease-out"
+            onClick={(e) => e.stopPropagation()}
+          >
+            
+            {/* Header Drawer */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/70 dark:bg-zinc-900/70 shrink-0">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-xs shrink-0"
+                  style={{ backgroundColor: selectedChartModal.color }}
+                >
+                  {selectedChartModal.type === 'criterion' ? <Activity className="w-5 h-5" /> : <Star className="w-5 h-5 fill-white" />}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+                    <span>{selectedChartModal.title}</span>
+                    <span 
+                      className="px-2 py-0.5 rounded-md text-xs font-bold text-white shadow-2xs"
+                      style={{ backgroundColor: selectedChartModal.color }}
+                    >
+                      {selectedChartModal.scoreOrCount}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                    {selectedChartModal.type === 'criterion' 
+                      ? 'Danh sách các phản hồi và ý kiến thực tế của bệnh nhân liên quan đến tiêu chí này' 
+                      : 'Danh sách các phản hồi thuộc phân khúc số sao này'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedChartModal(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
+                title="Đóng (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Nội dung danh sách đánh giá */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+              {(() => {
+                let relevantReviews = filteredReviews;
+
+                if (selectedChartModal.type === 'star') {
+                  const targetStar = parseInt(selectedChartModal.key, 10);
+                  relevantReviews = filteredReviews.filter((r) => r.overallRating === targetStar);
+                } else if (selectedChartModal.type === 'criterion') {
+                  const critKey = selectedChartModal.key as keyof typeof criteriaStats;
+                  // Lọc các review có đánh giá hoặc thẻ liên quan tới tiêu chí
+                  relevantReviews = filteredReviews.filter((r) => {
+                    const parsed = parseReviewContent(r.content || '');
+                    const tagsStr = parsed.tags.join(' ').toLowerCase();
+                    if (critKey === 'serviceAttitude') {
+                      return (
+                        tagsStr.includes('bác sĩ') ||
+                        tagsStr.includes('y tá') ||
+                        tagsStr.includes('điều dưỡng') ||
+                        tagsStr.includes('thái độ') ||
+                        tagsStr.includes('niềm nở') ||
+                        tagsStr.includes('tận tình') ||
+                        tagsStr.includes('tiếp đón') ||
+                        tagsStr.includes('bảo vệ') ||
+                        tagsStr.includes('nhân viên') ||
+                        tagsStr.includes('lấy máu') ||
+                        tagsStr.includes('chẩn đoán') ||
+                        tagsStr.includes('y đức')
+                      );
+                    }
+                    if (critKey === 'facilities') {
+                      return (
+                        tagsStr.includes('cơ sở') ||
+                        tagsStr.includes('trang thiết bị') ||
+                        tagsStr.includes('vệ sinh') ||
+                        tagsStr.includes('phòng') ||
+                        tagsStr.includes('thiết bị') ||
+                        tagsStr.includes('nhà xe') ||
+                        tagsStr.includes('máy lạnh') ||
+                        tagsStr.includes('quạt') ||
+                        tagsStr.includes('thang máy') ||
+                        tagsStr.includes('wifi') ||
+                        tagsStr.includes('nước uống') ||
+                        tagsStr.includes('cây xanh') ||
+                        tagsStr.includes('cơm viện') ||
+                        tagsStr.includes('ghế ngồi') ||
+                        tagsStr.includes('loa thông báo') ||
+                        tagsStr.includes('chụp x-quang') ||
+                        tagsStr.includes('môi trường')
+                      );
+                    }
+                    if (critKey === 'waitTime') {
+                      return (
+                        tagsStr.includes('chờ') ||
+                        tagsStr.includes('thời gian') ||
+                        tagsStr.includes('thủ tục') ||
+                        tagsStr.includes('gọi số') ||
+                        tagsStr.includes('nhanh chóng') ||
+                        tagsStr.includes('kịp thời') ||
+                        tagsStr.includes('trễ giờ') ||
+                        tagsStr.includes('phát thuốc') ||
+                        tagsStr.includes('trả kết quả') ||
+                        tagsStr.includes('bảng chỉ dẫn')
+                      );
+                    }
+                    if (critKey === 'costTransparency') {
+                      return (
+                        tagsStr.includes('chi phí') ||
+                        tagsStr.includes('viện phí') ||
+                        tagsStr.includes('bhyt') ||
+                        tagsStr.includes('thu phí') ||
+                        tagsStr.includes('quầy thanh toán') ||
+                        tagsStr.includes('minh bạch')
+                      );
+                    }
+                    return true;
+                  });
+
+                  // Nếu ít thẻ match thì fallback hiển thị các review trong bộ lọc kèm điểm tiêu chí đó
+                  if (relevantReviews.length === 0) {
+                    relevantReviews = filteredReviews.slice(0, 10);
+                  }
+                }
+
+                if (relevantReviews.length === 0) {
+                  return (
+                    <div className="py-16 text-center text-slate-400 dark:text-zinc-500">
+                      <p className="font-semibold text-sm">Chưa có đánh giá nào phù hợp với điều kiện này.</p>
+                      <p className="text-xs text-slate-400 mt-1">Vui lòng chọn mốc thời gian hoặc khoa phòng khác</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold text-slate-500 dark:text-zinc-400 pb-1 border-b border-slate-100 dark:border-zinc-800">
+                      <span>Tìm thấy {relevantReviews.length} lượt đánh giá thực tế:</span>
+                    </div>
+
+                    {relevantReviews.map((r) => {
+                      const parsed = parseReviewContent(r.content || '');
+                      const critKey = selectedChartModal.key as keyof typeof r.criteria;
+                      const critScore = selectedChartModal.type === 'criterion'
+                        ? (r.criteria && r.criteria[critKey] ? r.criteria[critKey] : r.overallRating)
+                        : r.overallRating;
+
+                      const isVerified = r.hasCardVerified || (!r.isAnonymous && r.cardNumber);
+
+                      return (
+                        <div 
+                          key={r.id} 
+                          className="p-4 rounded-2xl border border-slate-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xs hover:shadow-xs hover:border-slate-300 dark:hover:border-zinc-700 transition-all space-y-3"
+                        >
+                          {/* Dòng Header: Avatar + Tên + Khoa + Điểm sao */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 font-black text-xs flex items-center justify-center shrink-0 border border-slate-200 dark:border-zinc-700">
+                                {r.userName?.charAt(0)?.toUpperCase() || 'P'}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 dark:text-zinc-100 text-xs truncate">
+                                    {r.userName || 'Bệnh nhân'}
+                                  </span>
+                                  {isVerified && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                      <ShieldCheck className="w-2.5 h-2.5" />
+                                      <span>Đã xác thực</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400 block mt-0.5">
+                                  {r.departmentName}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end shrink-0">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 font-extrabold text-xs border border-amber-200/60 dark:border-amber-800/60">
+                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                <span>{critScore}.0</span>
+                              </span>
+                              <span className="text-[10px] text-slate-400 mt-1">
+                                {new Date(r.createdAt || r.visitDate).toLocaleDateString('vi-VN')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Danh sách Thẻ phản hồi nhanh: Tách biệt thẻ Khen và thẻ Chê */}
+                          {parsed.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {parsed.tags.map((t, idx) => {
+                                const isCritical = t.includes('chưa') || t.includes('lâu') || t.includes('bẩn') || t.includes('gắt') || t.includes('lỗi') || t.includes('rườm rà') || t.includes('oi bức');
+                                return (
+                                  <span 
+                                    key={idx}
+                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 border ${
+                                      isCritical 
+                                        ? 'bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900' 
+                                        : 'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900'
+                                    }`}
+                                  >
+                                    <span>{isCritical ? '⚠️' : '✓'}</span>
+                                    <span>{t}</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Ý kiến góp ý thêm nếu có */}
+                          {parsed.comment && (
+                            <div className="bg-slate-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-slate-200/70 dark:border-zinc-700/60 text-xs text-slate-700 dark:text-zinc-200 leading-relaxed font-normal">
+                              &ldquo;{parsed.comment}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer Drawer */}
+            <div className="p-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end bg-slate-50/70 dark:bg-zinc-900/70 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedChartModal(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-xs cursor-pointer"
               >
                 Đóng
               </button>

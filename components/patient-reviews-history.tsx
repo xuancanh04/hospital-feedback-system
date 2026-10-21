@@ -46,13 +46,15 @@ export function PatientReviewsHistory({
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Cập nhật khi initialDeptId thay đổi từ trang khác điều hướng sang
-  React.useEffect(() => {
+  // Đồng bộ deptFilter khi initialDeptId từ props thay đổi
+  const [prevInitialDeptId, setPrevInitialDeptId] = useState(initialDeptId);
+  if (initialDeptId !== prevInitialDeptId) {
+    setPrevInitialDeptId(initialDeptId);
     if (initialDeptId) {
       setDeptFilter(initialDeptId);
       setCurrentPage(1);
     }
-  }, [initialDeptId]);
+  }
 
   // Modal xem chi tiết bệnh nhân & đánh giá
   const [selectedPatientReview, setSelectedPatientReview] = useState<Review | null>(null);
@@ -850,7 +852,7 @@ export function PatientReviewsHistory({
                 <th className="py-3.5 px-3 min-w-[130px]">Định Danh / Thẻ</th>
                 <th className="py-3.5 px-4 min-w-[190px]">Khoa Phòng Tiếp Nhận</th>
                 <th className="py-3.5 px-3 text-center w-28">Tổng Điểm</th>
-                <th className="py-3.5 px-4 min-w-[240px]">Tiêu Chí & Góp Ý</th>
+                <th className="py-3.5 px-4 min-w-[240px]">Thẻ Tiêu Chí Chọn Nhanh</th>
                 <th className="py-3.5 px-3 text-center whitespace-nowrap w-28">Thời Gian</th>
                 <th className="py-3.5 px-4 text-center w-28 print:hidden">Thao Tác</th>
               </tr>
@@ -939,26 +941,23 @@ export function PatientReviewsHistory({
                         </span>
                       </td>
 
-                      {/* Tiêu chí & Lời nhắn */}
+                      {/* Thẻ chọn nhanh */}
                       <td className="py-3.5 px-4 max-w-[320px]">
-                        <div className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                          {parsed.tags.length > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded-md text-[10px] font-medium border border-slate-200/60 dark:border-zinc-700 shrink-0 max-w-[140px] truncate">
-                              ✓ {parsed.tags[0]}
-                            </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {parsed.tags.length > 0 ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 rounded-md text-[10px] font-medium border border-slate-200/60 dark:border-zinc-700 shrink-0 max-w-[140px] truncate">
+                                ✓ {parsed.tags[0]}
+                              </span>
+                              {parsed.tags.length > 1 && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200/60 shrink-0">
+                                  +{parsed.tags.length - 1}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">Khảo sát nhanh</span>
                           )}
-                          {parsed.tags.length > 1 && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 text-[10px] font-bold border border-teal-200/60 shrink-0">
-                              +{parsed.tags.length - 1}
-                            </span>
-                          )}
-                          {parsed.comment ? (
-                            <span className="text-[11px] text-slate-500 dark:text-zinc-400 truncate italic">
-                              &ldquo;{parsed.comment}&rdquo;
-                            </span>
-                          ) : parsed.tags.length === 0 ? (
-                            <span className="text-[10px] text-slate-400 italic">Không có góp ý thêm</span>
-                          ) : null}
                         </div>
                       </td>
 
@@ -1231,35 +1230,40 @@ export function PatientReviewsHistory({
                   </div>
 
                   {/* Danh sách thẻ tiêu chí đã chọn */}
-                  {parsed.tags.length > 0 && (
+                  {parsed.tags.length > 0 ? (
                     <div className="pt-2">
                       <span className="font-bold text-slate-600 dark:text-zinc-400 text-[11px] uppercase tracking-wider block mb-1.5">
-                        Các Tiêu Chí Chọn Nhanh ({parsed.tags.length}):
+                        Các Thẻ Tiêu Chí Chọn Nhanh ({parsed.tags.length}):
                       </span>
                       <div className="flex flex-wrap gap-2">
                         {parsed.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 font-medium text-xs shadow-2xs"
+                            className="px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-900/60 font-semibold text-xs shadow-2xs inline-flex items-center gap-1"
                           >
-                            ✓ {tag}
+                            <span>✓</span>
+                            <span>{tag}</span>
                           </span>
                         ))}
                       </div>
                     </div>
+                  ) : (
+                    <div className="pt-2 text-slate-400 italic text-xs">
+                      Bệnh nhân hoàn tất khảo sát nhanh mức sao chung tại Kiosk.
+                    </div>
                   )}
 
-                  {/* Lời nhắn / ý kiến góp ý thêm */}
-                  {parsed.comment && (
+                  {/* Lời nhắn nếu có (hầu hết bệnh nhân chỉ dùng thẻ) */}
+                  {parsed.comment ? (
                     <div className="pt-2">
                       <span className="font-bold text-slate-600 dark:text-zinc-400 text-[11px] uppercase tracking-wider block mb-1.5">
-                        Ý Kiến Góp Ý Thêm Của Người Bệnh:
+                        Ý Kiến Góp Ý:
                       </span>
                       <div className="p-3 rounded-xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-800 dark:text-zinc-200 font-medium leading-relaxed whitespace-pre-wrap text-xs shadow-2xs">
                         &ldquo;{parsed.comment}&rdquo;
                       </div>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
               </div>

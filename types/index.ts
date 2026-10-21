@@ -119,5 +119,6 @@ export interface FeedbackTagItem {
 
 export interface FeedbackTagsConfig {
   positiveTags: string[];
+  neutralTags?: string[];
   criticalTags: string[];
 }
