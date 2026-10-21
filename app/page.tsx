@@ -16,7 +16,7 @@ import { INITIAL_DEPARTMENTS } from '@/lib/mock-data';
 import { PatientCardInfo } from '@/types';
 
 export default function TouchMainApp() {
-  const { departments, addReview, positiveTags, neutralTags, criticalTags } = useFeedback();
+  const { departments, addReview, positiveTags, neutralTags, criticalTags, getTagsForDepartment } = useFeedback();
 
   // 4 Bước: 1. Chào mừng -> 2. Chọn khoa -> 3. Chấm điểm & Thẻ nhanh -> 4. Cảm ơn
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -799,30 +799,35 @@ export default function TouchMainApp() {
 
             {/* Khối Thẻ Đánh Giá Động Theo Từng Mức Số Sao: 4-5 Sao (Khen), 3 Sao (Góp ý nhẹ/Bình thường), 1-2 Sao (Phàn nàn) */}
             {(() => {
-              // Phân cấp thẻ chính xác theo mức độ hài lòng:
+              // Lấy bộ thẻ tương ứng cho khoa phòng đã chọn:
+              // Nếu khoa có cấu hình thẻ riêng thì chỉ hiển thị thẻ riêng của khoa, nếu chưa có thì dùng thẻ chung toàn viện
+              const resolvedDeptTags = getTagsForDepartment(selectedDept);
+
               let currentTagList: string[] = [];
               let tagHeading = '';
 
               if (rating >= 4 || rating === 0) {
                 // 4 - 5 Sao: Khen ngợi
-                currentTagList = positiveTags;
+                currentTagList = resolvedDeptTags.positiveTags.length > 0 ? resolvedDeptTags.positiveTags : positiveTags;
                 tagHeading = 'Điểm bạn hài lòng và khen ngợi nhất (chọn nhanh):';
               } else if (rating === 3) {
                 // 3 Sao: Bình thường / Đóng góp ý kiến
-                currentTagList = neutralTags && neutralTags.length > 0 ? neutralTags : [
-                  'Thời gian chờ đợi vừa phải',
-                  'Thủ tục giấy tờ cần tinh gọn hơn',
-                  'Bác sĩ tư vấn hơi nhanh',
-                  'Phòng chờ còn oi bức, ngột ngạt',
-                  'Bảng chỉ dẫn cần rõ ràng hơn',
-                  'Hệ thống gọi số cần cải thiện',
-                  'Nhà xe bệnh viện giờ cao điểm đông',
-                  'Cần tăng thêm bàn tiếp đón buổi sáng',
-                ];
+                currentTagList = resolvedDeptTags.neutralTags.length > 0 
+                  ? resolvedDeptTags.neutralTags 
+                  : (neutralTags && neutralTags.length > 0 ? neutralTags : [
+                      'Thời gian chờ đợi vừa phải',
+                      'Thủ tục giấy tờ cần tinh gọn hơn',
+                      'Bác sĩ tư vấn hơi nhanh',
+                      'Phòng chờ còn oi bức, ngột ngạt',
+                      'Bảng chỉ dẫn cần rõ ràng hơn',
+                      'Hệ thống gọi số cần cải thiện',
+                      'Nhà xe bệnh viện giờ cao điểm đông',
+                      'Cần tăng thêm bàn tiếp đón buổi sáng',
+                    ]);
                 tagHeading = 'Ý kiến đóng góp để bệnh viện phục vụ tốt hơn:';
               } else {
                 // 1 - 2 Sao: Phàn nàn, cần cải thiện gấp
-                currentTagList = criticalTags;
+                currentTagList = resolvedDeptTags.criticalTags.length > 0 ? resolvedDeptTags.criticalTags : criticalTags;
                 tagHeading = 'Vấn đề khiến bạn chưa hài lòng (cần bệnh viện chấn chỉnh):';
               }
 

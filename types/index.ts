@@ -113,12 +113,18 @@ export interface PatientCardInfo {
 export interface FeedbackTagItem {
   id: string;
   text: string;
-  type: 'positive' | 'critical';
+  type: 'positive' | 'neutral' | 'critical';
   enabled: boolean;
+  departmentId?: string; // undefined hoặc 'all' nghĩa là thẻ chung toàn viện
 }
 
 export interface FeedbackTagsConfig {
   positiveTags: string[];
   neutralTags?: string[];
   criticalTags: string[];
+  departmentTags?: Record<string, {
+    positiveTags?: string[];
+    neutralTags?: string[];
+    criticalTags?: string[];
+  }>;
 }

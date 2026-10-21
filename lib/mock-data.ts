@@ -571,3 +571,10 @@ export const DEFAULT_CRITICAL_TAGS: string[] = [
   'Khoa dược phát thuốc chậm',
   'Phòng bệnh ồn ào vào ban đêm'
 ];
+
+// Danh mục thẻ riêng đặc thù cho từng khoa phòng (sẽ thêm dần sau qua trang quản trị)
+export const DEFAULT_DEPARTMENT_TAGS: Record<string, {
+  positiveTags?: string[];
+  neutralTags?: string[];
+  criticalTags?: string[];
+}> = {};
