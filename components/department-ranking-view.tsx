@@ -43,6 +43,7 @@ export function DepartmentRankingView({
   onNavigateToReviews,
 }: DepartmentRankingViewProps) {
   const [rankingTab, setRankingTab] = useState<'all' | 'top' | 'needs_attention'>('all');
+  const [rankTierFilter, setRankTierFilter] = useState<'all' | 'excellent' | 'good' | 'attention'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'noi' | 'ngoai' | 'canlamsang'>('all');
   const [timeFilter, setTimeFilter] = useState<'all' | '7days' | '30days' | 'quarter' | 'year'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,9 +119,18 @@ export function DepartmentRankingView({
     return rankedList;
   }, [departments, filteredReviews, getDeptCategory]);
 
-  // Danh sách hiển thị sau khi lọc tab, khối và từ khóa tìm kiếm
+  // Danh sách hiển thị sau khi lọc tab, phân hạng theo thẻ, khối và từ khóa tìm kiếm
   const displayList = useMemo(() => {
     let result = [...rankingData];
+
+    // Lọc theo 4 thẻ thống kê
+    if (rankTierFilter === 'excellent') {
+      result = result.filter((d) => d.rating >= 4.8);
+    } else if (rankTierFilter === 'good') {
+      result = result.filter((d) => d.rating >= 4.5 && d.rating < 4.8);
+    } else if (rankTierFilter === 'attention') {
+      result = result.filter((d) => d.rating < 4.5);
+    }
 
     if (categoryFilter !== 'all') {
       result = result.filter((d) => d.category === categoryFilter);
@@ -143,7 +153,7 @@ export function DepartmentRankingView({
     }
 
     return result;
-  }, [rankingData, categoryFilter, rankingTab, searchQuery]);
+  }, [rankingData, rankTierFilter, categoryFilter, rankingTab, searchQuery]);
 
   // Thống kê nhanh
   const totalDepts = departments.length;
@@ -200,31 +210,139 @@ export function DepartmentRankingView({
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       
-      {/* 4 Thẻ chỉ số tổng quan xếp hạng */}
+      {/* 4 Thẻ chỉ số tổng quan xếp hạng - Bấm vào thẻ để lọc danh sách */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-xs">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Tổng Khoa Phòng</span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalDepts}</div>
-          <div className="text-xs text-slate-500 mt-1">100% kết nối Kiosk</div>
-        </div>
+        {/* Thẻ 1: Tổng khoa phòng */}
+        <button
+          type="button"
+          onClick={() => {
+            setRankTierFilter('all');
+            setRankingTab('all');
+          }}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden group ${
+            rankTierFilter === 'all' && rankingTab === 'all'
+              ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md ring-2 ring-slate-900/15'
+              : 'bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 hover:border-slate-400 hover:shadow-xs shadow-2xs'
+          }`}
+        >
+          <span className={`text-[11px] font-bold uppercase tracking-wider block transition-colors ${
+            rankTierFilter === 'all' && rankingTab === 'all'
+              ? 'text-slate-300 dark:text-slate-600'
+              : 'text-slate-500 group-hover:text-slate-800 dark:group-hover:text-slate-300'
+          }`}>
+            Tổng Khoa Phòng
+          </span>
+          <div className="text-2xl font-black mt-1">{totalDepts}</div>
+          <div className={`text-xs mt-1 flex items-center justify-between ${
+            rankTierFilter === 'all' && rankingTab === 'all'
+              ? 'text-slate-300 dark:text-slate-600 font-semibold'
+              : 'text-slate-500'
+          }`}>
+            <span>100% kết nối Kiosk</span>
+            {rankTierFilter === 'all' && rankingTab === 'all' && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-white/20 dark:bg-slate-900/10">Đang lọc</span>
+            )}
+          </div>
+        </button>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-xs">
-          <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider block">Hạng Xuất Sắc (≥4.8★)</span>
-          <div className="text-2xl font-black text-emerald-600 mt-1">{excellentCount}</div>
-          <div className="text-xs text-slate-500 mt-1">Dẫn đầu chất lượng</div>
-        </div>
+        {/* Thẻ 2: Hạng Xuất Sắc */}
+        <button
+          type="button"
+          onClick={() => {
+            setRankTierFilter((prev) => (prev === 'excellent' ? 'all' : 'excellent'));
+            setRankingTab('all');
+          }}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden group ${
+            rankTierFilter === 'excellent'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-500/25'
+              : 'bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 hover:border-emerald-300 dark:hover:border-emerald-700/60 hover:shadow-xs shadow-2xs'
+          }`}
+        >
+          <span className={`text-[11px] font-bold uppercase tracking-wider block transition-colors ${
+            rankTierFilter === 'excellent' ? 'text-emerald-100' : 'text-emerald-600 group-hover:text-emerald-700'
+          }`}>
+            Hạng Xuất Sắc (≥4.8★)
+          </span>
+          <div className={`text-2xl font-black mt-1 ${
+            rankTierFilter === 'excellent' ? 'text-white' : 'text-emerald-600'
+          }`}>
+            {excellentCount}
+          </div>
+          <div className={`text-xs mt-1 flex items-center justify-between ${
+            rankTierFilter === 'excellent' ? 'text-emerald-100 font-semibold' : 'text-slate-500'
+          }`}>
+            <span>Dẫn đầu chất lượng</span>
+            {rankTierFilter === 'excellent' && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-white/20">Đang lọc</span>
+            )}
+          </div>
+        </button>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-xs">
-          <span className="text-[11px] font-bold text-teal-600 uppercase tracking-wider block">Hạng Tốt (4.5 - 4.7★)</span>
-          <div className="text-2xl font-black text-teal-600 mt-1">{goodCount}</div>
-          <div className="text-xs text-slate-500 mt-1">Đạt chuẩn Bộ Y tế</div>
-        </div>
+        {/* Thẻ 3: Hạng Tốt */}
+        <button
+          type="button"
+          onClick={() => {
+            setRankTierFilter((prev) => (prev === 'good' ? 'all' : 'good'));
+            setRankingTab('all');
+          }}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden group ${
+            rankTierFilter === 'good'
+              ? 'bg-teal-600 text-white border-teal-600 shadow-md ring-2 ring-teal-500/25'
+              : 'bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 hover:border-teal-300 dark:hover:border-teal-700/60 hover:shadow-xs shadow-2xs'
+          }`}
+        >
+          <span className={`text-[11px] font-bold uppercase tracking-wider block transition-colors ${
+            rankTierFilter === 'good' ? 'text-teal-100' : 'text-teal-600 group-hover:text-teal-700'
+          }`}>
+            Hạng Tốt (4.5 - 4.7★)
+          </span>
+          <div className={`text-2xl font-black mt-1 ${
+            rankTierFilter === 'good' ? 'text-white' : 'text-teal-600'
+          }`}>
+            {goodCount}
+          </div>
+          <div className={`text-xs mt-1 flex items-center justify-between ${
+            rankTierFilter === 'good' ? 'text-teal-100 font-semibold' : 'text-slate-500'
+          }`}>
+            <span>Đạt chuẩn Bộ Y tế</span>
+            {rankTierFilter === 'good' && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-white/20">Đang lọc</span>
+            )}
+          </div>
+        </button>
 
-        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 shadow-xs">
-          <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider block">Cần Chú Ý (&lt;4.5★)</span>
-          <div className="text-2xl font-black text-amber-600 mt-1">{attentionCount}</div>
-          <div className="text-xs text-slate-500 mt-1">Cần cải thiện khâu chờ</div>
-        </div>
+        {/* Thẻ 4: Cần Chú Ý */}
+        <button
+          type="button"
+          onClick={() => {
+            setRankTierFilter((prev) => (prev === 'attention' ? 'all' : 'attention'));
+            setRankingTab('all');
+          }}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 cursor-pointer border relative overflow-hidden group ${
+            rankTierFilter === 'attention'
+              ? 'bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-500/25'
+              : 'bg-white dark:bg-zinc-900 border-slate-200/80 dark:border-zinc-800 hover:border-amber-300 dark:hover:border-amber-700/60 hover:shadow-xs shadow-2xs'
+          }`}
+        >
+          <span className={`text-[11px] font-bold uppercase tracking-wider block transition-colors ${
+            rankTierFilter === 'attention' ? 'text-amber-100' : 'text-amber-600 group-hover:text-amber-700'
+          }`}>
+            Cần Chú Ý (&lt;4.5★)
+          </span>
+          <div className={`text-2xl font-black mt-1 ${
+            rankTierFilter === 'attention' ? 'text-white' : 'text-amber-600'
+          }`}>
+            {attentionCount}
+          </div>
+          <div className={`text-xs mt-1 flex items-center justify-between ${
+            rankTierFilter === 'attention' ? 'text-amber-100 font-semibold' : 'text-slate-500'
+          }`}>
+            <span>Cần cải thiện khâu chờ</span>
+            {rankTierFilter === 'attention' && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-white/20">Đang lọc</span>
+            )}
+          </div>
+        </button>
       </div>
 
       {/* Thanh công cụ lọc & tìm kiếm đặt trực tiếp trên nền trang */}
