@@ -46,13 +46,15 @@ export function PatientReviewsHistory({
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  // Cập nhật khi initialDeptId thay đổi từ trang khác điều hướng sang
-  React.useEffect(() => {
+  // Đồng bộ deptFilter khi initialDeptId từ props thay đổi
+  const [prevInitialDeptId, setPrevInitialDeptId] = useState(initialDeptId);
+  if (initialDeptId !== prevInitialDeptId) {
+    setPrevInitialDeptId(initialDeptId);
     if (initialDeptId) {
       setDeptFilter(initialDeptId);
       setCurrentPage(1);
     }
-  }, [initialDeptId]);
+  }
 
   // Modal xem chi tiết bệnh nhân & đánh giá
   const [selectedPatientReview, setSelectedPatientReview] = useState<Review | null>(null);

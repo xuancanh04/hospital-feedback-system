@@ -262,6 +262,48 @@ export default function TouchMainApp() {
       ? `${patientCard.fullName} (${patientCard.type.toUpperCase()}: ${maskCard(patientCard.cardNumber)})`
       : 'Người bệnh tại bệnh viện (Ẩn danh)';
 
+    // Tự động phân bổ điểm 4 tiêu chí dựa trên mức sao chung và các thẻ nhanh đã chọn
+    let serviceScore = rating;
+    let facilitiesScore = rating;
+    let waitTimeScore = rating;
+    let costScore = rating;
+
+    selectedTags.forEach((tag) => {
+      const lower = tag.toLowerCase();
+      // Nhóm Thái độ & Y đức
+      if (lower.includes('bác sĩ') || lower.includes('y tá') || lower.includes('điều dưỡng') || lower.includes('thái độ') || lower.includes('niềm nở') || lower.includes('tận tình') || lower.includes('tiếp đón')) {
+        if (lower.includes('chưa') || lower.includes('gắt gỏng') || lower.includes('nhanh')) {
+          serviceScore = Math.max(1, serviceScore - 1);
+        } else {
+          serviceScore = Math.min(5, serviceScore + 1);
+        }
+      }
+      // Nhóm Cơ sở vật chất
+      if (lower.includes('cơ sở') || lower.includes('vệ sinh') || lower.includes('phòng') || lower.includes('thiết bị') || lower.includes('nhà xe') || lower.includes('thoáng mát') || lower.includes('oi bức')) {
+        if (lower.includes('chưa sạch') || lower.includes('bẩn') || lower.includes('oi bức') || lower.includes('quá tải')) {
+          facilitiesScore = Math.max(1, facilitiesScore - 1);
+        } else {
+          facilitiesScore = Math.min(5, facilitiesScore + 1);
+        }
+      }
+      // Nhóm Thời gian chờ đợi & Quy trình
+      if (lower.includes('chờ') || lower.includes('thời gian') || lower.includes('thủ tục') || lower.includes('gọi số') || lower.includes('kịp thời') || lower.includes('nhanh chóng')) {
+        if (lower.includes('lâu') || lower.includes('rườm rà') || lower.includes('lỗi')) {
+          waitTimeScore = Math.max(1, waitTimeScore - 1);
+        } else {
+          waitTimeScore = Math.min(5, waitTimeScore + 1);
+        }
+      }
+      // Nhóm Minh bạch viện phí
+      if (lower.includes('chi phí') || lower.includes('viện phí') || lower.includes('tiền') || lower.includes('giá') || lower.includes('phiếu thu')) {
+        if (lower.includes('chưa rõ') || lower.includes('cao')) {
+          costScore = Math.max(1, costScore - 1);
+        } else {
+          costScore = Math.min(5, costScore + 1);
+        }
+      }
+    });
+
     addReview({
       userId: patientCard ? `card-${patientCard.cardNumber}` : `touch-${Date.now()}`,
       userName: authorName,
@@ -276,10 +318,10 @@ export default function TouchMainApp() {
       departmentName: deptObj ? deptObj.name : 'Khoa Khám Bệnh',
       overallRating: rating,
       criteria: {
-        serviceAttitude: rating,
-        facilities: rating,
-        waitTime: rating,
-        costTransparency: rating,
+        serviceAttitude: serviceScore,
+        facilities: facilitiesScore,
+        waitTime: waitTimeScore,
+        costTransparency: costScore,
       },
       title: `Khảo sát chất lượng - ${rating} sao`,
       content: contentText,
