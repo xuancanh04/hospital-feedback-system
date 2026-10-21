@@ -8,7 +8,8 @@ import {
   INITIAL_REVIEWS,
   DEFAULT_POSITIVE_TAGS,
   DEFAULT_NEUTRAL_TAGS,
-  DEFAULT_CRITICAL_TAGS
+  DEFAULT_CRITICAL_TAGS,
+  DEFAULT_DEPARTMENT_TAGS
 } from '@/lib/mock-data';
 
 interface FeedbackContextType {
@@ -18,7 +19,22 @@ interface FeedbackContextType {
   positiveTags: string[];
   neutralTags: string[];
   criticalTags: string[];
+  departmentTags: Record<string, {
+    positiveTags?: string[];
+    neutralTags?: string[];
+    criticalTags?: string[];
+  }>;
+  getTagsForDepartment: (departmentId?: string) => {
+    positiveTags: string[];
+    neutralTags: string[];
+    criticalTags: string[];
+    isCustom: boolean;
+  };
   updateTags: (config: FeedbackTagsConfig) => Promise<void>;
+  updateDepartmentTags: (
+    departmentId: string, 
+    tags: { positiveTags?: string[]; neutralTags?: string[]; criticalTags?: string[] } | null
+  ) => Promise<void>;
   resetTagsToDefault: () => Promise<void>;
   addReview: (review: Omit<Review, 'id' | 'createdAt' | 'status' | 'likes'>) => Promise<void>;
   updateReviewStatus: (reviewId: string, status: ReviewStatus) => Promise<void>;
@@ -39,18 +55,55 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [positiveTags, setPositiveTags] = useState<string[]>(DEFAULT_POSITIVE_TAGS);
   const [neutralTags, setNeutralTags] = useState<string[]>(DEFAULT_NEUTRAL_TAGS);
   const [criticalTags, setCriticalTags] = useState<string[]>(DEFAULT_CRITICAL_TAGS);
+  const [departmentTags, setDepartmentTags] = useState<Record<string, {
+    positiveTags?: string[];
+    neutralTags?: string[];
+    criticalTags?: string[];
+  }>>(DEFAULT_DEPARTMENT_TAGS);
 
   React.useEffect(() => {
-    // 0. Tải danh sách thẻ đánh giá nhanh từ localStorage
-    const loadSavedTags = () => {
+    // 0. Tải danh sách thẻ đánh giá nhanh từ database PostgreSQL qua API /api/tags
+    const fetchTagsFromDB = async () => {
+      try {
+        const res = await fetch('/api/tags');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const { positiveTags: pos, neutralTags: neu, criticalTags: crit, departmentTags: dept } = json.data;
+            if (Array.isArray(pos) && pos.length > 0) {
+              setPositiveTags(pos);
+              localStorage.setItem('hospital_7a_tags_positive', JSON.stringify(pos));
+            }
+            if (Array.isArray(neu) && neu.length > 0) {
+              setNeutralTags(neu);
+              localStorage.setItem('hospital_7a_tags_neutral', JSON.stringify(neu));
+            }
+            if (Array.isArray(crit) && crit.length > 0) {
+              setCriticalTags(crit);
+              localStorage.setItem('hospital_7a_tags_critical', JSON.stringify(crit));
+            }
+            if (dept && typeof dept === 'object') {
+              setDepartmentTags(dept);
+              localStorage.setItem('hospital_7a_tags_department_v1', JSON.stringify(dept));
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Chưa kết nối được API /api/tags, fallback sang local:', e);
+      }
+
+      // Fallback nếu offline hoặc chưa kết nối DB
+      loadSavedTagsLocal();
+    };
+
+    const loadSavedTagsLocal = () => {
       try {
         const savedPositive = localStorage.getItem('hospital_7a_tags_positive');
         if (savedPositive) {
           const parsed = JSON.parse(savedPositive);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Hợp nhất với danh mục chuẩn đầy đủ để không bị thiếu sót
-            const merged = Array.from(new Set([...parsed, ...DEFAULT_POSITIVE_TAGS]));
-            setPositiveTags(merged);
+            setPositiveTags(parsed);
           }
         } else {
           setPositiveTags(DEFAULT_POSITIVE_TAGS);
@@ -60,8 +113,7 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         if (savedNeutral) {
           const parsed = JSON.parse(savedNeutral);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const merged = Array.from(new Set([...parsed, ...DEFAULT_NEUTRAL_TAGS]));
-            setNeutralTags(merged);
+            setNeutralTags(parsed);
           }
         } else {
           setNeutralTags(DEFAULT_NEUTRAL_TAGS);
@@ -71,25 +123,39 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         if (savedCritical) {
           const parsed = JSON.parse(savedCritical);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const merged = Array.from(new Set([...parsed, ...DEFAULT_CRITICAL_TAGS]));
-            setCriticalTags(merged);
+            setCriticalTags(parsed);
           }
         } else {
           setCriticalTags(DEFAULT_CRITICAL_TAGS);
         }
+
+        const savedDeptTags = localStorage.getItem('hospital_7a_tags_department_v1');
+        if (savedDeptTags) {
+          try {
+            const parsed = JSON.parse(savedDeptTags);
+            if (parsed && typeof parsed === 'object') {
+              setDepartmentTags(parsed);
+            }
+          } catch {
+            setDepartmentTags({});
+          }
+        } else {
+          setDepartmentTags({});
+        }
       } catch {}
     };
 
-    loadSavedTags();
+    fetchTagsFromDB();
 
     // Lắng nghe sự kiện storage để đồng bộ tức thì sang màn hình Kiosk / tab khác
     const handleStorageChange = (e: StorageEvent) => {
       if (
         e.key === 'hospital_7a_tags_positive' ||
         e.key === 'hospital_7a_tags_neutral' ||
-        e.key === 'hospital_7a_tags_critical'
+        e.key === 'hospital_7a_tags_critical' ||
+        e.key === 'hospital_7a_tags_department_v1'
       ) {
-        loadSavedTags();
+        loadSavedTagsLocal();
       }
     };
 
@@ -285,6 +351,35 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     saveDepartmentsLocal(departments.filter((d) => d.id !== id));
   };
 
+  // Lấy danh sách thẻ phù hợp cho khoa phòng đã chọn:
+  // Nếu khoa phòng đó có cấu hình thẻ riêng thì chỉ hiển thị thẻ riêng của khoa.
+  // Nếu khoa phòng đó chưa có thẻ riêng thì tự động fallback dùng thẻ chung của toàn viện.
+  const getTagsForDepartment = (departmentId?: string) => {
+    if (departmentId && departmentTags[departmentId]) {
+      const custom = departmentTags[departmentId];
+      const hasAnyCustom = 
+        (custom.positiveTags && custom.positiveTags.length > 0) ||
+        (custom.neutralTags && custom.neutralTags.length > 0) ||
+        (custom.criticalTags && custom.criticalTags.length > 0);
+
+      if (hasAnyCustom) {
+        return {
+          positiveTags: custom.positiveTags || [],
+          neutralTags: custom.neutralTags || [],
+          criticalTags: custom.criticalTags || [],
+          isCustom: true,
+        };
+      }
+    }
+
+    return {
+      positiveTags,
+      neutralTags,
+      criticalTags,
+      isCustom: false,
+    };
+  };
+
   const updateTags = async (config: FeedbackTagsConfig) => {
     setPositiveTags(config.positiveTags);
     if (config.neutralTags) {
@@ -294,15 +389,88 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
     setCriticalTags(config.criticalTags);
     localStorage.setItem('hospital_7a_tags_positive', JSON.stringify(config.positiveTags));
     localStorage.setItem('hospital_7a_tags_critical', JSON.stringify(config.criticalTags));
+
+    if (config.departmentTags) {
+      setDepartmentTags(config.departmentTags);
+      localStorage.setItem('hospital_7a_tags_department_v1', JSON.stringify(config.departmentTags));
+    }
+
+    // Đồng bộ trực tiếp vào database PostgreSQL
+    try {
+      await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync',
+          departmentId: 'all',
+          positiveTags: config.positiveTags,
+          neutralTags: config.neutralTags || neutralTags,
+          criticalTags: config.criticalTags,
+        }),
+      });
+    } catch (e) {
+      console.warn('Lỗi khi đồng bộ thẻ chung vào database:', e);
+    }
+  };
+
+  const updateDepartmentTags = async (
+    departmentId: string, 
+    tags: { positiveTags?: string[]; neutralTags?: string[]; criticalTags?: string[] } | null
+  ) => {
+    setDepartmentTags((prev) => {
+      const updated = { ...prev };
+      if (!tags) {
+        delete updated[departmentId];
+      } else {
+        updated[departmentId] = tags;
+      }
+      localStorage.setItem('hospital_7a_tags_department_v1', JSON.stringify(updated));
+      return updated;
+    });
+
+    // Đồng bộ trực tiếp thẻ của khoa này vào database PostgreSQL
+    try {
+      await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync',
+          departmentId,
+          positiveTags: tags?.positiveTags || [],
+          neutralTags: tags?.neutralTags || [],
+          criticalTags: tags?.criticalTags || [],
+        }),
+      });
+    } catch (e) {
+      console.warn(`Lỗi khi đồng bộ thẻ của khoa ${departmentId} vào database:`, e);
+    }
   };
 
   const resetTagsToDefault = async () => {
     setPositiveTags(DEFAULT_POSITIVE_TAGS);
     setNeutralTags(DEFAULT_NEUTRAL_TAGS);
     setCriticalTags(DEFAULT_CRITICAL_TAGS);
+    setDepartmentTags(DEFAULT_DEPARTMENT_TAGS);
     localStorage.setItem('hospital_7a_tags_positive', JSON.stringify(DEFAULT_POSITIVE_TAGS));
     localStorage.setItem('hospital_7a_tags_neutral', JSON.stringify(DEFAULT_NEUTRAL_TAGS));
     localStorage.setItem('hospital_7a_tags_critical', JSON.stringify(DEFAULT_CRITICAL_TAGS));
+    localStorage.setItem('hospital_7a_tags_department_v1', JSON.stringify(DEFAULT_DEPARTMENT_TAGS));
+
+    try {
+      await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync',
+          departmentId: 'all',
+          positiveTags: DEFAULT_POSITIVE_TAGS,
+          neutralTags: DEFAULT_NEUTRAL_TAGS,
+          criticalTags: DEFAULT_CRITICAL_TAGS,
+        }),
+      });
+    } catch (e) {
+      console.warn('Lỗi khi reset thẻ trong database:', e);
+    }
   };
 
   return (
@@ -314,7 +482,10 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         positiveTags,
         neutralTags,
         criticalTags,
+        departmentTags,
+        getTagsForDepartment,
         updateTags,
+        updateDepartmentTags,
         resetTagsToDefault,
         addReview,
         updateReviewStatus,

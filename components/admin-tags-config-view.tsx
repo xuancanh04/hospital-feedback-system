@@ -17,6 +17,7 @@ import {
   Tablet,
   ExternalLink,
   Filter,
+  Building2,
 } from 'lucide-react';
 
 type TagCategory = 'positive' | 'neutral' | 'critical';
@@ -25,26 +26,32 @@ interface FlatTagItem {
   id: string;
   text: string;
   category: TagCategory;
+  departmentId: string; // 'all' hoặc id khoa cụ thể (vd: 'dept-noi-1')
 }
 
 export function AdminTagsConfigView() {
-  const { positiveTags, neutralTags, criticalTags, updateTags } = useFeedback();
+  const { 
+    departments, 
+    positiveTags, 
+    neutralTags, 
+    criticalTags, 
+    departmentTags, 
+    updateTags, 
+    updateDepartmentTags 
+  } = useFeedback();
 
-  // Local state danh sách thẻ theo 3 tầng sao
-  const [posTags, setPosTags] = useState<string[]>(positiveTags);
-  const [neuTags, setNeuTags] = useState<string[]>(neutralTags || []);
-  const [critTags, setCritTags] = useState<string[]>(criticalTags);
-
-  // Bộ lọc bảng (Tất cả / Khen ngợi 4-5★ / Góp ý 3★ / Phàn nàn 1-2★)
+  // Bộ lọc bảng
   const [filterCategory, setFilterCategory] = useState<'all' | TagCategory>('all');
+  const [filterDept, setFilterDept] = useState<string>('all'); // 'all' | 'general' | departmentId
 
   // Drawer thêm thẻ mới từ bên phải
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [newTagText, setNewTagText] = useState('');
   const [newTagCategory, setNewTagCategory] = useState<TagCategory>('positive');
+  const [newTagDept, setNewTagDept] = useState<string>('all'); // 'all' hoặc departmentId
 
   // Chỉnh sửa trực tiếp tên thẻ
-  const [editingItem, setEditingItem] = useState<{ category: TagCategory; originalText: string } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ id: string; originalText: string } | null>(null);
   const [editingText, setEditingText] = useState('');
 
   // Tìm kiếm
@@ -53,154 +60,284 @@ export function AdminTagsConfigView() {
   // Trạng thái thông báo
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Đồng bộ khi context thay đổi
-  React.useEffect(() => {
-    setPosTags(positiveTags);
-  }, [positiveTags]);
+  // Gom toàn bộ thẻ (thẻ chung + thẻ riêng của từng khoa) thành 1 danh sách phẳng để quản lý tập trung
+  const allTagItems: FlatTagItem[] = React.useMemo(() => {
+    const items: FlatTagItem[] = [];
 
-  React.useEffect(() => {
-    setNeuTags(neutralTags || []);
-  }, [neutralTags]);
-
-  React.useEffect(() => {
-    setCritTags(criticalTags);
-  }, [criticalTags]);
-
-  // Gom danh sách thẻ thành 1 mảng đồng nhất hiển thị trên 1 bảng duy nhất
-  const allTagItems: FlatTagItem[] = [
-    ...posTags.map((t, idx) => ({ id: `pos-${idx}-${t}`, text: t, category: 'positive' as TagCategory })),
-    ...neuTags.map((t, idx) => ({ id: `neu-${idx}-${t}`, text: t, category: 'neutral' as TagCategory })),
-    ...critTags.map((t, idx) => ({ id: `crit-${idx}-${t}`, text: t, category: 'critical' as TagCategory })),
-  ];
-
-  // Tự động lưu và phát sóng đồng bộ ngay tức thì sang màn hình Kiosk
-  const syncTags = async (pos: string[], neu: string[], crit: string[]) => {
-    await updateTags({
-      positiveTags: pos,
-      neutralTags: neu,
-      criticalTags: crit,
+    // 1. Thẻ chung toàn viện
+    positiveTags.forEach((t, idx) => {
+      items.push({ id: `gen-pos-${idx}-${t}`, text: t, category: 'positive', departmentId: 'all' });
     });
+    (neutralTags || []).forEach((t, idx) => {
+      items.push({ id: `gen-neu-${idx}-${t}`, text: t, category: 'neutral', departmentId: 'all' });
+    });
+    criticalTags.forEach((t, idx) => {
+      items.push({ id: `gen-crit-${idx}-${t}`, text: t, category: 'critical', departmentId: 'all' });
+    });
+
+    // 2. Thẻ riêng của từng khoa phòng
+    Object.entries(departmentTags || {}).forEach(([deptId, deptTagObj]) => {
+      (deptTagObj.positiveTags || []).forEach((t, idx) => {
+        items.push({ id: `dept-${deptId}-pos-${idx}-${t}`, text: t, category: 'positive', departmentId: deptId });
+      });
+      (deptTagObj.neutralTags || []).forEach((t, idx) => {
+        items.push({ id: `dept-${deptId}-neu-${idx}-${t}`, text: t, category: 'neutral', departmentId: deptId });
+      });
+      (deptTagObj.criticalTags || []).forEach((t, idx) => {
+        items.push({ id: `dept-${deptId}-crit-${idx}-${t}`, text: t, category: 'critical', departmentId: deptId });
+      });
+    });
+
+    return items;
+  }, [positiveTags, neutralTags, criticalTags, departmentTags]);
+
+  // Thông báo toast
+  const triggerToast = () => {
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
   };
 
-  // Thêm thẻ mới từ Drawer bên phải (Tự động lưu và hiện ngay lên Kiosk)
+  // Thêm thẻ mới từ Drawer bên phải
   const handleAddTag = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = newTagText.trim();
     if (!trimmed) return;
 
-    let updatedPos = posTags;
-    let updatedNeu = neuTags;
-    let updatedCrit = critTags;
+    if (newTagDept === 'all') {
+      // Thêm vào thẻ chung toàn viện
+      let updatedPos = positiveTags;
+      let updatedNeu = neutralTags || [];
+      let updatedCrit = criticalTags;
 
-    if (newTagCategory === 'positive') {
-      if (!posTags.includes(trimmed)) {
-        updatedPos = [...posTags, trimmed];
-        setPosTags(updatedPos);
+      if (newTagCategory === 'positive') {
+        if (!updatedPos.includes(trimmed)) updatedPos = [...updatedPos, trimmed];
+      } else if (newTagCategory === 'neutral') {
+        if (!updatedNeu.includes(trimmed)) updatedNeu = [...updatedNeu, trimmed];
+      } else {
+        if (!updatedCrit.includes(trimmed)) updatedCrit = [...updatedCrit, trimmed];
       }
-    } else if (newTagCategory === 'neutral') {
-      if (!neuTags.includes(trimmed)) {
-        updatedNeu = [...neuTags, trimmed];
-        setNeuTags(updatedNeu);
-      }
+
+      await updateTags({
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
     } else {
-      if (!critTags.includes(trimmed)) {
-        updatedCrit = [...critTags, trimmed];
-        setCritTags(updatedCrit);
+      // Thêm vào thẻ riêng của khoa cụ thể
+      const currentDeptObj = departmentTags[newTagDept] || { positiveTags: [], neutralTags: [], criticalTags: [] };
+      let updatedPos = currentDeptObj.positiveTags || [];
+      let updatedNeu = currentDeptObj.neutralTags || [];
+      let updatedCrit = currentDeptObj.criticalTags || [];
+
+      if (newTagCategory === 'positive') {
+        if (!updatedPos.includes(trimmed)) updatedPos = [...updatedPos, trimmed];
+      } else if (newTagCategory === 'neutral') {
+        if (!updatedNeu.includes(trimmed)) updatedNeu = [...updatedNeu, trimmed];
+      } else {
+        if (!updatedCrit.includes(trimmed)) updatedCrit = [...updatedCrit, trimmed];
       }
+
+      await updateDepartmentTags(newTagDept, {
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
     }
 
     setNewTagText('');
     setShowAddDrawer(false);
-    await syncTags(updatedPos, updatedNeu, updatedCrit);
+    triggerToast();
   };
 
-  // Xóa thẻ (Tự động cập nhật Kiosk)
+  // Xóa thẻ
   const handleRemoveTag = async (item: FlatTagItem) => {
-    let updatedPos = posTags;
-    let updatedNeu = neuTags;
-    let updatedCrit = critTags;
+    if (item.departmentId === 'all') {
+      let updatedPos = positiveTags;
+      let updatedNeu = neutralTags || [];
+      let updatedCrit = criticalTags;
 
-    if (item.category === 'positive') {
-      updatedPos = posTags.filter((t) => t !== item.text);
-      setPosTags(updatedPos);
-    } else if (item.category === 'neutral') {
-      updatedNeu = neuTags.filter((t) => t !== item.text);
-      setNeuTags(updatedNeu);
+      if (item.category === 'positive') {
+        updatedPos = positiveTags.filter((t) => t !== item.text);
+      } else if (item.category === 'neutral') {
+        updatedNeu = (neutralTags || []).filter((t) => t !== item.text);
+      } else {
+        updatedCrit = criticalTags.filter((t) => t !== item.text);
+      }
+
+      await updateTags({
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
     } else {
-      updatedCrit = critTags.filter((t) => t !== item.text);
-      setCritTags(updatedCrit);
+      const currentDeptObj = departmentTags[item.departmentId] || {};
+      let updatedPos = (currentDeptObj.positiveTags || []).filter((t) => item.category !== 'positive' || t !== item.text);
+      let updatedNeu = (currentDeptObj.neutralTags || []).filter((t) => item.category !== 'neutral' || t !== item.text);
+      let updatedCrit = (currentDeptObj.criticalTags || []).filter((t) => item.category !== 'critical' || t !== item.text);
+
+      await updateDepartmentTags(item.departmentId, {
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
     }
 
-    await syncTags(updatedPos, updatedNeu, updatedCrit);
+    triggerToast();
   };
 
-  // Đổi phân loại nhóm thẻ trực tiếp trên bảng (Tự động cập nhật Kiosk)
+  // Đổi phân loại mức sao (positive / neutral / critical)
   const handleChangeCategory = async (item: FlatTagItem, targetCategory: TagCategory) => {
     if (item.category === targetCategory) return;
 
-    let updatedPos = posTags;
-    let updatedNeu = neuTags;
-    let updatedCrit = critTags;
+    if (item.departmentId === 'all') {
+      let updatedPos = positiveTags.filter((t) => item.category !== 'positive' || t !== item.text);
+      let updatedNeu = (neutralTags || []).filter((t) => item.category !== 'neutral' || t !== item.text);
+      let updatedCrit = criticalTags.filter((t) => item.category !== 'critical' || t !== item.text);
 
-    // Xóa khỏi nhóm cũ
-    if (item.category === 'positive') {
-      updatedPos = posTags.filter((t) => t !== item.text);
-    } else if (item.category === 'neutral') {
-      updatedNeu = neuTags.filter((t) => t !== item.text);
+      if (targetCategory === 'positive') updatedPos = [...updatedPos, item.text];
+      else if (targetCategory === 'neutral') updatedNeu = [...updatedNeu, item.text];
+      else updatedCrit = [...updatedCrit, item.text];
+
+      await updateTags({
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
     } else {
-      updatedCrit = critTags.filter((t) => t !== item.text);
+      const currentDeptObj = departmentTags[item.departmentId] || {};
+      let updatedPos = (currentDeptObj.positiveTags || []).filter((t) => item.category !== 'positive' || t !== item.text);
+      let updatedNeu = (currentDeptObj.neutralTags || []).filter((t) => item.category !== 'neutral' || t !== item.text);
+      let updatedCrit = (currentDeptObj.criticalTags || []).filter((t) => item.category !== 'critical' || t !== item.text);
+
+      if (targetCategory === 'positive') updatedPos = [...updatedPos, item.text];
+      else if (targetCategory === 'neutral') updatedNeu = [...updatedNeu, item.text];
+      else updatedCrit = [...updatedCrit, item.text];
+
+      await updateDepartmentTags(item.departmentId, {
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
     }
 
-    // Thêm vào nhóm mới
-    if (targetCategory === 'positive') {
-      if (!updatedPos.includes(item.text)) updatedPos = [...updatedPos, item.text];
-    } else if (targetCategory === 'neutral') {
-      if (!updatedNeu.includes(item.text)) updatedNeu = [...updatedNeu, item.text];
-    } else {
-      if (!updatedCrit.includes(item.text)) updatedCrit = [...updatedCrit, item.text];
-    }
-
-    setPosTags(updatedPos);
-    setNeuTags(updatedNeu);
-    setCritTags(updatedCrit);
-
-    await syncTags(updatedPos, updatedNeu, updatedCrit);
+    triggerToast();
   };
 
-  // Lưu chỉnh sửa tên thẻ (Tự động cập nhật Kiosk)
+  // Đổi khoa phòng áp dụng cho thẻ (hoặc chuyển sang Thẻ chung toàn viện)
+  const handleChangeDepartment = async (item: FlatTagItem, targetDeptId: string) => {
+    if (item.departmentId === targetDeptId) return;
+
+    // 1. Xóa khỏi nguồn cũ
+    if (item.departmentId === 'all') {
+      const updatedPos = positiveTags.filter((t) => item.category !== 'positive' || t !== item.text);
+      const updatedNeu = (neutralTags || []).filter((t) => item.category !== 'neutral' || t !== item.text);
+      const updatedCrit = criticalTags.filter((t) => item.category !== 'critical' || t !== item.text);
+      await updateTags({
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
+    } else {
+      const currentDeptObj = departmentTags[item.departmentId] || {};
+      const updatedPos = (currentDeptObj.positiveTags || []).filter((t) => item.category !== 'positive' || t !== item.text);
+      const updatedNeu = (currentDeptObj.neutralTags || []).filter((t) => item.category !== 'neutral' || t !== item.text);
+      const updatedCrit = (currentDeptObj.criticalTags || []).filter((t) => item.category !== 'critical' || t !== item.text);
+      await updateDepartmentTags(item.departmentId, {
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
+    }
+
+    // 2. Thêm vào đích mới
+    if (targetDeptId === 'all') {
+      let updatedPos = positiveTags;
+      let updatedNeu = neutralTags || [];
+      let updatedCrit = criticalTags;
+      if (item.category === 'positive') updatedPos = [...updatedPos, item.text];
+      else if (item.category === 'neutral') updatedNeu = [...updatedNeu, item.text];
+      else updatedCrit = [...updatedCrit, item.text];
+      await updateTags({
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
+    } else {
+      const targetDeptObj = departmentTags[targetDeptId] || {};
+      let updatedPos = targetDeptObj.positiveTags || [];
+      let updatedNeu = targetDeptObj.neutralTags || [];
+      let updatedCrit = targetDeptObj.criticalTags || [];
+      if (item.category === 'positive') updatedPos = [...updatedPos, item.text];
+      else if (item.category === 'neutral') updatedNeu = [...updatedNeu, item.text];
+      else updatedCrit = [...updatedCrit, item.text];
+      await updateDepartmentTags(targetDeptId, {
+        positiveTags: updatedPos,
+        neutralTags: updatedNeu,
+        criticalTags: updatedCrit,
+      });
+    }
+
+    triggerToast();
+  };
+
+  // Lưu chỉnh sửa tên thẻ
   const handleSaveEdit = async () => {
     if (!editingItem) return;
-    const trimmed = editingText.trim();
-    if (trimmed) {
-      let updatedPos = posTags;
-      let updatedNeu = neuTags;
-      let updatedCrit = critTags;
+    const targetItem = allTagItems.find((i) => i.id === editingItem.id);
+    if (!targetItem) return;
 
-      if (editingItem.category === 'positive') {
-        updatedPos = posTags.map((t) => (t === editingItem.originalText ? trimmed : t));
-        setPosTags(updatedPos);
-      } else if (editingItem.category === 'neutral') {
-        updatedNeu = neuTags.map((t) => (t === editingItem.originalText ? trimmed : t));
-        setNeuTags(updatedNeu);
+    const trimmed = editingText.trim();
+    if (trimmed && trimmed !== targetItem.text) {
+      if (targetItem.departmentId === 'all') {
+        const updatedPos = positiveTags.map((t) => (targetItem.category === 'positive' && t === targetItem.text ? trimmed : t));
+        const updatedNeu = (neutralTags || []).map((t) => (targetItem.category === 'neutral' && t === targetItem.text ? trimmed : t));
+        const updatedCrit = criticalTags.map((t) => (targetItem.category === 'critical' && t === targetItem.text ? trimmed : t));
+
+        await updateTags({
+          positiveTags: updatedPos,
+          neutralTags: updatedNeu,
+          criticalTags: updatedCrit,
+        });
       } else {
-        updatedCrit = critTags.map((t) => (t === editingItem.originalText ? trimmed : t));
-        setCritTags(updatedCrit);
+        const currentDeptObj = departmentTags[targetItem.departmentId] || {};
+        const updatedPos = (currentDeptObj.positiveTags || []).map((t) => (targetItem.category === 'positive' && t === targetItem.text ? trimmed : t));
+        const updatedNeu = (currentDeptObj.neutralTags || []).map((t) => (targetItem.category === 'neutral' && t === targetItem.text ? trimmed : t));
+        const updatedCrit = (currentDeptObj.criticalTags || []).map((t) => (targetItem.category === 'critical' && t === targetItem.text ? trimmed : t));
+
+        await updateDepartmentTags(targetItem.departmentId, {
+          positiveTags: updatedPos,
+          neutralTags: updatedNeu,
+          criticalTags: updatedCrit,
+        });
       }
 
-      await syncTags(updatedPos, updatedNeu, updatedCrit);
+      triggerToast();
     }
     setEditingItem(null);
     setEditingText('');
   };
 
-  // Lọc dữ liệu theo tab và ô tìm kiếm
+  // Lọc dữ liệu theo phân loại, khoa phòng và từ khóa
   const filteredTags = allTagItems.filter((item) => {
     const matchCategory = filterCategory === 'all' || item.category === filterCategory;
+    
+    let matchDept = true;
+    if (filterDept === 'general') {
+      matchDept = item.departmentId === 'all';
+    } else if (filterDept !== 'all') {
+      matchDept = item.departmentId === filterDept;
+    }
+
     const matchSearch = item.text.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCategory && matchSearch;
+    return matchCategory && matchDept && matchSearch;
   });
+
+  // Tên khoa phòng helper
+  const getDeptName = (deptId: string) => {
+    if (deptId === 'all') return 'Thẻ chung toàn viện';
+    const dept = departments.find((d) => d.id === deptId);
+    return dept ? dept.name : deptId;
+  };
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
@@ -232,25 +369,46 @@ export function AdminTagsConfigView() {
       )}
 
       {/* 1. THANH CÔNG CỤ ĐIỀU KHIỂN & BỘ LỌC GỌN GÀNG */}
-      <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-3">
         
-        {/* Cụm Lọc Phân Loại dạng Dropdown xổ xuống gọn gàng */}
-        <div className="flex items-center gap-2">
+        {/* Cụm Bộ Lọc: Khoa Phòng + Mức Sao */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Lọc theo Khoa phòng */}
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-zinc-400">
-            <Filter className="w-3.5 h-3.5 text-teal-600" />
-            <span>Phân loại:</span>
+            <Building2 className="w-3.5 h-3.5 text-teal-600" />
+            <span>Khoa:</span>
+            <select
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs cursor-pointer min-w-[200px]"
+            >
+              <option value="all">Tất cả khoa phòng</option>
+              <option value="general">🏛️ Thẻ chung toàn viện</option>
+              <optgroup label="Từng khoa phòng cụ thể">
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </div>
 
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value as any)}
-            className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs cursor-pointer min-w-[210px]"
-          >
-            <option value="all">Tất cả tiêu chí ({allTagItems.length})</option>
-            <option value="positive">🟢 Thẻ Khen Ngợi 4 - 5★ ({posTags.length})</option>
-            <option value="neutral">🟡 Thẻ Góp Ý 3★ ({neuTags.length})</option>
-            <option value="critical">🔴 Thẻ Phàn Nàn 1 - 2★ ({critTags.length})</option>
-          </select>
+          {/* Lọc theo Mức sao */}
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+            <Filter className="w-3.5 h-3.5 text-teal-600" />
+            <span>Mức sao:</span>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value as any)}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs cursor-pointer min-w-[190px]"
+            >
+              <option value="all">Tất cả mức sao</option>
+              <option value="positive">🟢 Khen Ngợi 4 - 5★</option>
+              <option value="neutral">🟡 Góp Ý 3★</option>
+              <option value="critical">🔴 Phàn Nàn 1 - 2★</option>
+            </select>
+          </div>
         </div>
 
         {/* Cụm Tìm Kiếm & Các Nút Hành Động */}
@@ -288,16 +446,18 @@ export function AdminTagsConfigView() {
             <ExternalLink className="w-3 h-3 text-slate-400" />
           </a>
 
-
-
           {/* NÚT THÊM THẺ MỞ DRAWER BÊN PHẢI */}
           <button
             type="button"
             onClick={() => {
               setNewTagText('');
-              // Nếu đang lọc theo nhóm nào thì mặc định chọn phân loại đó luôn
               if (filterCategory !== 'all') {
                 setNewTagCategory(filterCategory);
+              }
+              if (filterDept !== 'all' && filterDept !== 'general') {
+                setNewTagDept(filterDept);
+              } else {
+                setNewTagDept('all');
               }
               setShowAddDrawer(true);
             }}
@@ -318,22 +478,21 @@ export function AdminTagsConfigView() {
               <tr>
                 <th className="py-3 px-3 w-12 text-center">STT</th>
                 <th className="py-3 px-4">Nội Dung Tiêu Chí Thẻ</th>
-                <th className="py-3 px-4 w-60">Phân Loại Mức Sao</th>
-                <th className="py-3 px-4 w-28 text-right">Thao Tác</th>
+                <th className="py-3 px-4 w-56">Khoa Phòng Áp Dụng</th>
+                <th className="py-3 px-4 w-52">Phân Loại Mức Sao</th>
+                <th className="py-3 px-4 w-24 text-right">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/60">
               {filteredTags.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-slate-400 text-xs italic">
-                    Không tìm thấy tiêu chí nào phù hợp với điều kiện tìm kiếm.
+                  <td colSpan={5} className="py-12 text-center text-slate-400 text-xs italic">
+                    Không tìm thấy tiêu chí nào phù hợp với điều kiện lọc hiện tại.
                   </td>
                 </tr>
               ) : (
                 filteredTags.map((item, idx) => {
-                  const isEditing =
-                    editingItem?.category === item.category &&
-                    editingItem?.originalText === item.text;
+                  const isEditing = editingItem?.id === item.id;
 
                   return (
                     <tr
@@ -395,14 +554,36 @@ export function AdminTagsConfigView() {
                         )}
                       </td>
 
-                      {/* Cột 3: Phân loại mức sao (Dropdown cho phép đổi nhóm trực tiếp) */}
+                      {/* Cột 3: Khoa phòng áp dụng (Dropdown đổi trực tiếp) */}
+                      <td className="py-3 px-4">
+                        <select
+                          value={item.departmentId}
+                          onChange={(e) => handleChangeDepartment(item, e.target.value)}
+                          className={`w-full px-2.5 py-1 text-xs font-semibold rounded-lg border outline-none cursor-pointer transition truncate ${
+                            item.departmentId === 'all'
+                              ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+                              : 'bg-teal-50 text-teal-800 border-teal-300 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800'
+                          }`}
+                        >
+                          <option value="all">🏛️ Thẻ chung toàn viện</option>
+                          <optgroup label="Thẻ riêng của khoa">
+                            {departments.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      </td>
+
+                      {/* Cột 4: Phân loại mức sao (Dropdown cho phép đổi nhóm trực tiếp) */}
                       <td className="py-3 px-4">
                         <select
                           value={item.category}
                           onChange={(e) =>
                             handleChangeCategory(item, e.target.value as TagCategory)
                           }
-                          className={`px-2.5 py-1 text-xs font-bold rounded-lg border outline-none cursor-pointer transition ${
+                          className={`w-full px-2.5 py-1 text-xs font-bold rounded-lg border outline-none cursor-pointer transition ${
                             item.category === 'positive'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
                               : item.category === 'neutral'
@@ -412,11 +593,11 @@ export function AdminTagsConfigView() {
                         >
                           <option value="positive">🟢 Khen ngợi (4 - 5★)</option>
                           <option value="neutral">🟡 Góp ý xây dựng (3★)</option>
-                          <option value="critical">🔴 Phàn nàn / Bức xúc (1 - 2★)</option>
+                          <option value="critical">🔴 Phàn nàn (1 - 2★)</option>
                         </select>
                       </td>
 
-                      {/* Cột 4: Thao tác */}
+                      {/* Cột 5: Thao tác */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         {!isEditing && (
                           <div className="flex items-center justify-end gap-1">
@@ -424,7 +605,7 @@ export function AdminTagsConfigView() {
                               type="button"
                               onClick={() => {
                                 setEditingItem({
-                                  category: item.category,
+                                  id: item.id,
                                   originalText: item.text,
                                 });
                                 setEditingText(item.text);
@@ -457,19 +638,24 @@ export function AdminTagsConfigView() {
         <div className="p-3 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-800/30 flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
           <div>
             Hiển thị <strong>{filteredTags.length}</strong> / {allTagItems.length} tiêu chí
+            {filterDept !== 'all' && (
+              <span className="ml-2 font-medium text-teal-700 dark:text-teal-400">
+                ({getDeptName(filterDept)})
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>4-5★: {posTags.length}</span>
+              <span>4-5★ ({allTagItems.filter((t) => t.category === 'positive').length})</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
-              <span>3★: {neuTags.length}</span>
+              <span>3★ ({allTagItems.filter((t) => t.category === 'neutral').length})</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-rose-500" />
-              <span>1-2★: {critTags.length}</span>
+              <span>1-2★ ({allTagItems.filter((t) => t.category === 'critical').length})</span>
             </span>
           </div>
         </div>
@@ -515,6 +701,31 @@ export function AdminTagsConfigView() {
             {/* Form nội dung */}
             <form onSubmit={handleAddTag} className="flex-1 p-6 space-y-5 overflow-y-auto">
               
+              {/* Chọn Khoa phòng áp dụng */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Áp dụng cho Khoa / Toàn viện <span className="text-rose-500">*</span></span>
+                </label>
+                <select
+                  value={newTagDept}
+                  onChange={(e) => setNewTagDept(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs font-semibold focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs cursor-pointer"
+                >
+                  <option value="all">🏛️ Thẻ chung toàn viện</option>
+                  <optgroup label="Gán riêng cho từng khoa phòng">
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+                <p className="text-[11px] text-slate-400">
+                  Nếu chọn khoa phòng, chỉ bệnh nhân tại khoa đó mới nhìn thấy thẻ này trên Kiosk.
+                </p>
+              </div>
+
               {/* Nội dung tiêu chí */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 block">
@@ -524,7 +735,7 @@ export function AdminTagsConfigView() {
                   rows={3}
                   value={newTagText}
                   onChange={(e) => setNewTagText(e.target.value)}
-                  placeholder="Ví dụ: Bác sĩ tận tình, Cơ sở sạch sẽ, Thời gian chờ đợi quá lâu..."
+                  placeholder="Ví dụ: Bác sĩ phẫu thuật tay nghề cao, Khử khuẩn buồng bệnh sạch sẽ..."
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-sm font-medium focus:ring-2 focus:ring-teal-500 outline-none shadow-2xs resize-none"
                   autoFocus
                 />
