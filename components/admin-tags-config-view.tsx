@@ -171,9 +171,9 @@ export function AdminTagsConfigView() {
       });
     } else {
       const currentDeptObj = departmentTags[item.departmentId] || {};
-      let updatedPos = (currentDeptObj.positiveTags || []).filter((t) => item.category !== 'positive' || t !== item.text);
-      let updatedNeu = (currentDeptObj.neutralTags || []).filter((t) => item.category !== 'neutral' || t !== item.text);
-      let updatedCrit = (currentDeptObj.criticalTags || []).filter((t) => item.category !== 'critical' || t !== item.text);
+      const updatedPos = (currentDeptObj.positiveTags || []).filter((t) => item.category !== 'positive' || t !== item.text);
+      const updatedNeu = (currentDeptObj.neutralTags || []).filter((t) => item.category !== 'neutral' || t !== item.text);
+      const updatedCrit = (currentDeptObj.criticalTags || []).filter((t) => item.category !== 'critical' || t !== item.text);
 
       await updateDepartmentTags(item.departmentId, {
         positiveTags: updatedPos,

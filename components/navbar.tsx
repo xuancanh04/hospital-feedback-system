@@ -12,14 +12,13 @@ import {
   PhoneCall
 } from 'lucide-react';
 
+const emptySubscribe = () => () => {};
+
 export function Navbar() {
   const pathname = usePathname();
   const { currentUser, isAuthenticated, logout } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const mounted = React.useSyncExternalStore(emptySubscribe, () => true, () => false);
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-colors">
       {/* Top Banner Quân Đội - Xanh Đậm Chuẩn Quân Y (#02633c) */}

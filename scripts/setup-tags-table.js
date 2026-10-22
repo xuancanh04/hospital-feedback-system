@@ -1,5 +1,14 @@
+const fs = require('fs');
 const { Pool } = require('pg');
-const pool = new Pool({ connectionString: 'postgresql://postgres:K9%23m%24v8P!xL2zQ%25w@localhost:5432/hospital_rating_system?schema=public' });
+
+let dbUrl = process.env.DATABASE_URL;
+if (!dbUrl && fs.existsSync('.env.local')) {
+  const envContent = fs.readFileSync('.env.local', 'utf8');
+  const match = envContent.match(/DATABASE_URL="?([^"\r\n]+)"?/);
+  if (match) dbUrl = match[1];
+}
+
+const pool = new Pool({ connectionString: dbUrl || 'postgresql://postgres:password@localhost:5432/hospital_rating_system?schema=public' });
 
 const POSITIVE_TAGS = [
   'Bác sĩ tận tình, chu đáo',

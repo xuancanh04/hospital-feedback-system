@@ -181,42 +181,51 @@ export function KioskCardScannerModal({
   }, [isOpen, onCardScanned, onClose]);
 
   // Bật camera thật khi ở tab scan
-  const startCamera = async () => {
-    try {
-      setCameraError('');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-      setIsCameraActive(true);
-    } catch {
-      setCameraError('Chưa nhận diện được camera máy Kiosk. Quý khách vui lòng đưa thẻ trước đầu đọc quét hoặc chọn chức năng bên dưới.');
-      setIsCameraActive(false);
-    }
-  };
-
-  const stopCamera = () => {
+  const stopCamera = React.useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     setIsCameraActive(false);
-  };
+  }, []);
 
   useEffect(() => {
+    let active = true;
+
     if (isOpen && activeTab === 'scan') {
-      startCamera();
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        })
+        .then((stream) => {
+          if (!active) {
+            stream.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().catch(() => {});
+          }
+          setIsCameraActive(true);
+          setCameraError('');
+        })
+        .catch(() => {
+          if (active) {
+            setCameraError('Chưa nhận diện được camera máy Kiosk. Quý khách vui lòng đưa thẻ trước đầu đọc quét hoặc chọn chức năng bên dưới.');
+            setIsCameraActive(false);
+          }
+        });
+      }
     } else {
       stopCamera();
     }
+
     return () => {
+      active = false;
       stopCamera();
     };
-  }, [isOpen, activeTab]);
+  }, [isOpen, activeTab, stopCamera]);
 
   // Xử lý xác nhận nhập thủ công
   const handleManualSubmit = (e: React.FormEvent) => {
