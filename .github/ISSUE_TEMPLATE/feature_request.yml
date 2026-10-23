@@ -1,0 +1,17 @@
+name: Feature Request (Đề xuất tính năng mới)
+description: Đề xuất một ý tưởng hoặc tính năng mới cho dự án
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Mô tả ý tưởng tính năng
+      description: Tính năng này giải quyết vấn đề gì hoặc mang lại lợi ích gì?
+      placeholder: Tôi muốn hệ thống có thêm...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Giải pháp đề xuất
+      description: Bạn hình dung tính năng này hoạt động hoặc hiển thị ra sao?
