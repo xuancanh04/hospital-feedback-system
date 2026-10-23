@@ -1,6 +1,23 @@
 {
   "name": "hospital-feedback-system",
   "version": "0.1.0",
+  "description": "Comprehensive hospital patient feedback and rating system built with Next.js 16, React 19, TypeScript, Tailwind CSS v4, and PostgreSQL.",
+  "author": "xuancanh04",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xuancanh04/hospital-feedback-system.git"
+  },
+  "keywords": [
+    "nextjs",
+    "react19",
+    "typescript",
+    "hospital-management",
+    "feedback-system",
+    "patient-rating",
+    "postgresql",
+    "tailwindcss"
+  ],
   "private": true,
   "scripts": {
     "dev": "next dev",

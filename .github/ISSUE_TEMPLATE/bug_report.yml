@@ -1,0 +1,32 @@
+name: Bug Report (Báo cáo lỗi)
+description: Tạo báo cáo giúp chúng tôi cải thiện hệ thống
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Cảm ơn bạn đã báo cáo lỗi! Vui lòng điền thông tin chi tiết bên dưới.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Mô tả lỗi
+      description: Chuyện gì đã xảy ra?
+      placeholder: Mô tả chi tiết vấn đề bạn gặp phải...
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Các bước tái hiện lỗi
+      description: Các bước cụ thể để gặp lại lỗi này.
+      placeholder: |
+        1. Đi tới trang '...'
+        2. Nhấp vào nút '...'
+        3. Thấy thông báo lỗi '...'
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Môi trường thử nghiệm
+      description: Trình duyệt, hệ điều hành hoặc thiết bị bạn đang dùng.
+      placeholder: Chrome 124, Windows 11, Node.js 20...
