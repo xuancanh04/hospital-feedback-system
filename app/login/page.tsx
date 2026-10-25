@@ -2,31 +2,24 @@
 
 import React, { useState, Suspense } from 'react';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Input } from '@/components/ui/form-controls';
 import { 
   Lock, 
   Mail, 
-  User, 
   ArrowRight,
   Eye,
   EyeOff,
   AlertCircle,
-  KeyRound,
   ShieldCheck
 } from 'lucide-react';
 
 function LoginFormContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialIsRegister = searchParams.get('register') === 'true';
+  const { login, users } = useAuth();
 
-  const { login, register, users } = useAuth();
-
-  const [isRegister, setIsRegister] = useState(initialIsRegister);
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,35 +32,15 @@ function LoginFormContent() {
     setLoading(true);
 
     try {
-      if (isRegister) {
-        if (!name.trim()) {
-          setErrorMsg('Vui lòng nhập họ và tên của bạn.');
-          setLoading(false);
-          return;
-        }
-        if (password.length < 6) {
-          setErrorMsg('Mật khẩu tối thiểu 6 ký tự để đảm bảo an toàn.');
-          setLoading(false);
-          return;
-        }
-
-        const res = await register(name.trim(), email.trim(), password);
-        if (res.success) {
-          router.push('/portal/patient');
-        } else {
-          setErrorMsg(res.error || 'Đăng ký không thành công.');
-        }
+      const res = await login(email.trim(), password);
+      if (res.success) {
+        const target = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+        const role = res.user?.role || target?.role;
+        if (role === 'admin') router.push('/portal/admin');
+        else if (role === 'staff') router.push('/portal/staff');
+        else router.push('/portal/patient');
       } else {
-        const res = await login(email.trim(), password);
-        if (res.success) {
-          const target = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-          const role = res.user?.role || target?.role;
-          if (role === 'admin') router.push('/portal/admin');
-          else if (role === 'staff') router.push('/portal/staff');
-          else router.push('/portal/patient');
-        } else {
-          setErrorMsg(res.error || 'Đăng nhập không thành công.');
-        }
+        setErrorMsg(res.error || 'Đăng nhập không thành công.');
       }
     } catch {
       setErrorMsg('Đã xảy ra lỗi kết nối. Vui lòng thử lại.');
@@ -77,7 +50,6 @@ function LoginFormContent() {
   };
 
   const handleFillDemo = (demoEmail: string, demoPass: string) => {
-    setIsRegister(false);
     setEmail(demoEmail);
     setPassword(demoPass);
     setErrorMsg('');

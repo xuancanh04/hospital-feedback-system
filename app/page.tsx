@@ -39,7 +39,6 @@ export default function TouchMainApp() {
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-      const height = window.innerHeight;
 
       // Nếu màn hình rộng (Desktop / TV / Kiosk ngang)
       if (width >= 1280) {
