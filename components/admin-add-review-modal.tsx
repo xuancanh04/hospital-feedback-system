@@ -7,12 +7,9 @@ import {
   Star,
   User,
   CreditCard,
-  Building2,
-  Calendar,
   ShieldCheck,
   CheckCircle2,
   PlusCircle,
-  FileText,
   Sparkles,
   Info
 } from 'lucide-react';

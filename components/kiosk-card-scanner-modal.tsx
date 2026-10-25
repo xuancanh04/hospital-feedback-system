@@ -180,15 +180,6 @@ export function KioskCardScannerModal({
     };
   }, [isOpen, onCardScanned, onClose]);
 
-  // Bật camera thật khi ở tab scan
-  const stopCamera = React.useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsCameraActive(false);
-  }, []);
-
   const startCamera = React.useCallback(() => {
     if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices.getUserMedia({
@@ -211,19 +202,22 @@ export function KioskCardScannerModal({
   }, []);
 
   useEffect(() => {
-    let active = true;
-
     if (isOpen && activeTab === 'scan') {
       startCamera();
     } else {
-      stopCamera();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
     }
 
     return () => {
-      active = false;
-      stopCamera();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
     };
-  }, [isOpen, activeTab, startCamera, stopCamera]);
+  }, [isOpen, activeTab, startCamera]);
 
   // Xử lý xác nhận nhập thủ công
   const handleManualSubmit = (e: React.FormEvent) => {
